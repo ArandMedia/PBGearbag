@@ -1,0 +1,56 @@
+{
+  "name": "paintball-community-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A comprehensive social platform and marketplace for the paintball industry",
+  "workspaces": [
+    "mobile",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "mobile": "cd mobile && npm start",
+    "mobile:ios": "cd mobile && npm run ios",
+    "mobile:android": "cd mobile && npm run android",
+    "backend": "cd backend && npm run start:dev",
+    "backend:build": "cd backend && npm run build",
+    "backend:prod": "cd backend && npm run start:prod",
+    "install:all": "npm install && cd mobile && npm install && cd ../backend && npm install && cd ../shared && npm install",
+    "clean": "rm -rf node_modules mobile/node_modules backend/node_modules shared/node_modules",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.1.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.1.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ArandMedia/PBG.git"
+  },
+  "keywords": [
+    "paintball",
+    "social",
+    "marketplace",
+    "tournament",
+    "mobile",
+    "react-native"
+  ],
+  "author": "PBG Team",
+  "license": "UNLICENSED"
+}

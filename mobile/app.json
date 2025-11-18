@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Paintball Community",
+    "slug": "paintball-community-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a1a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pbg.paintballcommunity",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to capture photos and videos for posts and marketplace listings.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images for posts and marketplace listings.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to find nearby fields, events, and players."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a1a"
+      },
+      "package": "com.pbg.paintballcommunity",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with the community."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow the app to access your camera to capture photos and videos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow the app to use your location to find nearby events and fields."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
+    }
+  }
+}
