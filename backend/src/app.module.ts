@@ -26,7 +26,7 @@ import { BrandsModule } from './brands/brands.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
+        type: 'mysql',
         host: configService.get('DB_HOST'),
         port: configService.get('DB_PORT'),
         username: configService.get('DB_USERNAME'),
@@ -35,6 +35,8 @@ import { BrandsModule } from './brands/brands.module';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: configService.get('NODE_ENV') === 'development',
         logging: configService.get('NODE_ENV') === 'development',
+        charset: 'utf8mb4',
+        timezone: 'Z',
       }),
       inject: [ConfigService],
     }),
