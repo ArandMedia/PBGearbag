@@ -9,16 +9,16 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import MarketplaceFeedScreen from '../screens/MarketplaceFeedScreen';
+import ListingDetailScreen from '../screens/ListingDetailScreen';
+import CreateListingScreen from '../screens/CreateListingScreen';
+import MyListingsScreen from '../screens/MyListingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Placeholder screens for tabs (we'll build these later)
 function HomeScreen() {
-  return <View style={{ flex: 1, backgroundColor: '#1a1a1a' }} />;
-}
-
-function MarketplaceScreen() {
   return <View style={{ flex: 1, backgroundColor: '#1a1a1a' }} />;
 }
 
@@ -52,7 +52,17 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Marketplace"
-        component={MarketplaceScreen}
+        component={MarketplaceFeedScreen}
+        options={{
+          title: 'Marketplace',
+        }}
+      />
+      <Tab.Screen
+        name="My Listings"
+        component={MyListingsScreen}
+        options={{
+          title: 'My Listings',
+        }}
       />
       <Tab.Screen
         name="Events"
@@ -81,7 +91,7 @@ function AuthStack() {
   );
 }
 
-// Main Stack including edit profile modal
+// Main Stack including modals
 function MainStack() {
   return (
     <Stack.Navigator>
@@ -95,6 +105,34 @@ function MainStack() {
         component={EditProfileScreen}
         options={{
           title: 'Edit Profile',
+          headerStyle: {
+            backgroundColor: '#1a1a1a',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }}
+      />
+      <Stack.Screen
+        name="ListingDetail"
+        component={ListingDetailScreen}
+        options={{
+          title: 'Listing Details',
+          headerStyle: {
+            backgroundColor: '#1a1a1a',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }}
+      />
+      <Stack.Screen
+        name="CreateListing"
+        component={CreateListingScreen}
+        options={{
+          title: 'Create Listing',
           headerStyle: {
             backgroundColor: '#1a1a1a',
           },
