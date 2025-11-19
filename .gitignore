@@ -18,6 +18,8 @@ dist/
 .env.local
 .env.development.local
 .env.test.local
+
+# Keep production template but ignore with actual values
 .env.production.local
 
 # Logs
@@ -84,14 +86,16 @@ yarn-error.*
 .docker/
 
 # Uploads & Media
-uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
 media/
+
+# SSL Certificates
+nginx/ssl/*
+!nginx/ssl/.gitkeep
 
 # Secrets
 secrets/
-*.pem
-*.crt
-*.key
 
 # Misc
 .eslintcache

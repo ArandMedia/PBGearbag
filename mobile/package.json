@@ -7,8 +7,12 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "expo export --platform web",
+    "build:web:prod": "EXPO_PUBLIC_ENV=production expo export --platform web",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
+    "build:all": "eas build --platform all",
+    "preview:web": "npx serve dist",
     "test": "jest",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "type-check": "tsc --noEmit"
