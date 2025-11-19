@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TeamsModule } from './teams/teams.module';
@@ -37,6 +38,9 @@ import { BrandsModule } from './brands/brands.module';
       }),
       inject: [ConfigService],
     }),
+
+    // Common module
+    CommonModule,
 
     // Feature modules
     AuthModule,
