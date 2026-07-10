@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing to the Paintball Community App! This document provides guidelines and instructions for contributing.
 
+## Project Constitution
+
+Before proposing or implementing a feature, read the [PBGearbag AI Developer Constitution](docs/AI_DEVELOPER_CONSTITUTION.md). Contributions should prioritize long-term architecture, accessibility, security, graceful failure states, documentation, and testing over short-term convenience.
+
 ## Code of Conduct
 
 - Be respectful and inclusive
@@ -35,6 +39,7 @@ Thank you for your interest in contributing to the Paintball Community App! This
 1. **Fork the repository**
 
 2. **Create a feature branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
@@ -47,6 +52,7 @@ Thank you for your interest in contributing to the Paintball Community App! This
    - Update documentation as needed
 
 4. **Commit your changes**
+
    ```bash
    git add .
    git commit -m "feat: add user profile editing"
@@ -62,6 +68,7 @@ Thank you for your interest in contributing to the Paintball Community App! This
    - `chore:` - Maintenance tasks
 
 5. **Push to your fork**
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -78,18 +85,21 @@ Thank you for your interest in contributing to the Paintball Community App! This
 ### Code Style
 
 #### TypeScript
+
 - Use TypeScript for all new code
 - Define proper types (avoid `any`)
 - Use interfaces for object shapes
 - Use enums for fixed sets of values
 
 #### React Native / React
+
 - Use functional components with hooks
 - Keep components small and focused
 - Extract reusable logic into custom hooks
 - Use proper prop types
 
 #### NestJS
+
 - Follow NestJS conventions and architecture
 - Use decorators appropriately
 - Implement proper DTOs for validation
@@ -198,6 +208,7 @@ cd backend && npm run test:cov
 ## Recognition
 
 Contributors will be:
+
 - Listed in CONTRIBUTORS.md
 - Mentioned in release notes
 - Credited in the app (for significant contributions)

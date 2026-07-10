@@ -2,9 +2,14 @@
 
 A comprehensive social platform and marketplace for the paintball industry, connecting players, teams, organizers, and brands.
 
+## AI Developer Constitution
+
+PBGearbag engineering decisions are governed by the [AI Developer Constitution](docs/AI_DEVELOPER_CONSTITUTION.md), which defines the long-term product philosophy, architecture expectations, accessibility requirements, security posture, documentation standards, and done definition for production work.
+
 ## Vision
 
 Create a unified platform that grows the paintball sport by:
+
 - Connecting players across all play styles (speedball, recball, beginners)
 - Providing a massive marketplace for gear (Buy/Sell/Trade)
 - Empowering tournament teams with dedicated collaboration spaces
@@ -16,6 +21,7 @@ Create a unified platform that grows the paintball sport by:
 ## Core Features
 
 ### 1. Social Platform
+
 - **Multi-Style Communities**: Dedicated spaces for speedball, recball, scenario, and beginner players
 - **User Profiles**: Customizable profiles with play style, experience level, and achievements
 - **Activity Feed**: Posts, photos, videos, and updates from the community
@@ -23,6 +29,7 @@ Create a unified platform that grows the paintball sport by:
 - **Player Discovery**: Find players nearby or by skill level
 
 ### 2. Marketplace (BST - Buy/Sell/Trade)
+
 - **Listings**: Create detailed product listings with photos and descriptions
 - **Categories**: Markers, masks, tanks, loaders, apparel, accessories
 - **Search & Filter**: Advanced search by brand, condition, price, location
@@ -31,6 +38,7 @@ Create a unified platform that grows the paintball sport by:
 - **Shipping Integration**: Shipping label generation and tracking
 
 ### 3. Team Management
+
 - **Team Spaces**: Private team hubs for communication and planning
 - **Roster Management**: Team member roles and positions
 - **Practice Scheduling**: Calendar and event planning for teams
@@ -39,6 +47,7 @@ Create a unified platform that grows the paintball sport by:
 - **Recruitment**: Team finder for players and teams looking for members
 
 ### 4. Tournament & Event System
+
 - **Event Creation**: Host tournaments, practice sessions, scenario games
 - **Registration**: Player and team registration with payment
 - **Brackets & Scheduling**: Automated bracket generation
@@ -47,6 +56,7 @@ Create a unified platform that grows the paintball sport by:
 - **Attendee Management**: Check-in, waivers, communication
 
 ### 5. Live Streaming & Entertainment
+
 - **Tournament Streaming**: Live video streaming from events
 - **VOD Library**: Video on demand for past tournaments
 - **Commentary & Analysis**: Multi-camera angles and professional commentary
@@ -54,6 +64,7 @@ Create a unified platform that grows the paintball sport by:
 - **Watch Parties**: Community viewing experiences
 
 ### 6. Brand Partnerships
+
 - **Sponsored Content**: Featured posts and product showcases
 - **Brand Profiles**: Official brand pages with products and updates
 - **Team Sponsorships**: Connect brands with teams
@@ -61,6 +72,7 @@ Create a unified platform that grows the paintball sport by:
 - **Analytics Dashboard**: Engagement metrics for brands
 
 ### 7. Player Rankings & Stats
+
 - **Personal Rankings**: Tournament performance and division rankings
 - **Statistics**: Win/loss records, tournament history
 - **Achievements**: Badges and milestones
@@ -69,6 +81,7 @@ Create a unified platform that grows the paintball sport by:
 ## Technology Stack
 
 ### Mobile Application
+
 - **Framework**: React Native with Expo
 - **Language**: TypeScript
 - **State Management**: Redux Toolkit / Zustand
@@ -78,6 +91,7 @@ Create a unified platform that grows the paintball sport by:
 - **API Client**: Axios / React Query
 
 ### Backend
+
 - **Runtime**: Node.js
 - **Framework**: NestJS (scalable, modular architecture)
 - **Language**: TypeScript
@@ -86,18 +100,21 @@ Create a unified platform that grows the paintball sport by:
 - **Authentication**: JWT + OAuth 2.0
 
 ### Database
+
 - **Primary DB**: PostgreSQL
 - **ORM**: Prisma / TypeORM
 - **Cache**: Redis
 - **Search**: Elasticsearch (for marketplace and user search)
 
 ### Media & Storage
+
 - **File Storage**: AWS S3 / Cloudflare R2
 - **CDN**: CloudFront / Cloudflare CDN
 - **Image Processing**: Sharp / ImageMagick
 - **Video Streaming**: AWS IVS / Mux / Cloudflare Stream
 
 ### Infrastructure
+
 - **Hosting**: AWS / Google Cloud / Digital Ocean
 - **Container**: Docker
 - **Orchestration**: Kubernetes (for scale)
@@ -105,10 +122,12 @@ Create a unified platform that grows the paintball sport by:
 - **Monitoring**: DataDog / Sentry
 
 ### Payment Processing
+
 - **Provider**: Stripe
 - **Features**: Marketplace payments, event registration, subscriptions
 
 ### Push Notifications
+
 - **Service**: Firebase Cloud Messaging
 - **Use Cases**: Messages, event updates, marketplace activity
 
@@ -159,38 +178,45 @@ paintball-community-app/
 ## Development Phases
 
 ### Phase 1: Foundation (Months 1-2)
+
 - Project setup and infrastructure
 - Authentication and user profiles
 - Basic social features (posts, comments)
 - Mobile app navigation and core UI
 
 ### Phase 2: Marketplace (Months 3-4)
+
 - Marketplace listing creation
 - Search and filtering
 - Payment integration
 - Rating system
 
 ### Phase 3: Team Features (Month 5)
+
 - Team creation and management
 - Team communication
 - Rankings integration
 
 ### Phase 4: Events (Month 6)
+
 - Event creation and management
 - Registration and payments
 - Scheduling and brackets
 
 ### Phase 5: Streaming (Months 7-8)
+
 - Video streaming infrastructure
 - Live tournament broadcasts
 - VOD library
 
 ### Phase 6: Brand Partnerships (Month 9)
+
 - Brand profiles and sponsored content
 - Advertising platform
 - Analytics dashboard
 
 ### Phase 7: Polish & Launch (Months 10-12)
+
 - Performance optimization
 - Beta testing
 - Marketing and community building
