@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
+import { PlatformModule } from './platform/platform.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TeamsModule } from './teams/teams.module';
@@ -13,6 +14,21 @@ import { SocialModule } from './social/social.module';
 import { StreamingModule } from './streaming/streaming.module';
 import { RankingsModule } from './rankings/rankings.module';
 import { BrandsModule } from './brands/brands.module';
+import { SearchModule } from './domains/search/search.module';
+import { AdminModule } from './domains/admin/admin.module';
+import { AnalyticsModule } from './domains/analytics/analytics.module';
+import { BadgesModule } from './domains/badges/badges.module';
+import { AchievementsModule } from './domains/achievements/achievements.module';
+import { GearbagModule } from './domains/gearbag/gearbag.module';
+import { ReviewsModule } from './domains/reviews/reviews.module';
+import { NotificationsModule } from './domains/notifications/notifications.module';
+import { MessagingModule } from './domains/messaging/messaging.module';
+import { LearningModule } from './domains/learning/learning.module';
+import { MediaModule } from './domains/media/media.module';
+import { ManufacturersModule } from './domains/manufacturers/manufacturers.module';
+import { BusinessesModule } from './domains/businesses/businesses.module';
+import { FieldsModule } from './domains/fields/fields.module';
+import { PlayersModule } from './domains/players/players.module';
 
 @Module({
   imports: [
@@ -41,8 +57,9 @@ import { BrandsModule } from './brands/brands.module';
       inject: [ConfigService],
     }),
 
-    // Common module
+    // Platform foundation
     CommonModule,
+    PlatformModule,
 
     // Feature modules
     AuthModule,
@@ -54,6 +71,21 @@ import { BrandsModule } from './brands/brands.module';
     StreamingModule,
     RankingsModule,
     BrandsModule,
+    PlayersModule,
+    FieldsModule,
+    BusinessesModule,
+    ManufacturersModule,
+    MediaModule,
+    LearningModule,
+    MessagingModule,
+    NotificationsModule,
+    ReviewsModule,
+    GearbagModule,
+    AchievementsModule,
+    BadgesModule,
+    AnalyticsModule,
+    AdminModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

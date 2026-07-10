@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { ApiResponseInterceptor } from './platform/api/api-response.interceptor';
+import { ApiExceptionFilter } from './platform/api/api-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -35,6 +37,10 @@ async function bootstrap() {
   const apiPrefix = configService.get('API_PREFIX') || 'api/v1';
   app.setGlobalPrefix(apiPrefix);
 
+  // Standard API envelopes and errors
+  app.useGlobalInterceptors(new ApiResponseInterceptor());
+  app.useGlobalFilters(new ApiExceptionFilter());
+
   // Validation
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,8 +52,8 @@ async function bootstrap() {
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('Paintball Community API')
-    .setDescription('API for the Paintball Community App')
+    .setTitle('PBGearbag Core API')
+    .setDescription('Foundation API for the PBGearbag paintball operating system')
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('auth', 'Authentication endpoints')

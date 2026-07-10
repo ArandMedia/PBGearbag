@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../store/AuthContext';
 
 export default function LoginScreen({ navigation }: any) {
-  const { login, loading, error, clearError } = useAuth();
+  const { login, loading, error } = useAuth();
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
 
