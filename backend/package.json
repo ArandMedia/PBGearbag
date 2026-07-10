@@ -1,7 +1,7 @@
 {
   "name": "@pbg/backend",
   "version": "0.1.0",
-  "description": "Backend API for Paintball Community App",
+  "description": "Backend API for PBGearbag Core",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

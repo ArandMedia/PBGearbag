@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Linking,
   Dimensions,
 } from 'react-native';
 import { marketplaceService, Listing } from '../services/marketplace.service';

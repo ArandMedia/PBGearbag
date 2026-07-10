@@ -1,8 +1,8 @@
 {
-  "name": "paintball-community-app",
+  "name": "pbgearbag-core",
   "version": "0.1.0",
   "private": true,
-  "description": "A comprehensive social platform and marketplace for the paintball industry",
+  "description": "PBGearbag Core foundation for the operating system of paintball",
   "workspaces": [
     "mobile",
     "backend",
@@ -45,11 +45,12 @@
   },
   "keywords": [
     "paintball",
-    "social",
     "marketplace",
     "tournament",
     "mobile",
-    "react-native"
+    "react-native",
+    "pbgearbag",
+    "core"
   ],
   "author": "PBG Team",
   "license": "UNLICENSED"

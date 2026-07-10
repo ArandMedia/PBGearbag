@@ -1,6 +1,6 @@
-# Paintball Community App (PBG)
+# PBGearbag Core
 
-A comprehensive social platform and marketplace for the paintball industry, connecting players, teams, organizers, and brands.
+The production foundation for the PBGearbag ecosystem: the operating system for the sport of paintball.
 
 ## Vision
 
@@ -15,10 +15,9 @@ Create a unified platform that grows the paintball sport by:
 
 ## Core Features
 
-### 1. Social Platform
+### 1. PBGearbag Platform Foundation
 - **Multi-Style Communities**: Dedicated spaces for speedball, recball, scenario, and beginner players
 - **User Profiles**: Customizable profiles with play style, experience level, and achievements
-- **Activity Feed**: Posts, photos, videos, and updates from the community
 - **Messaging**: Direct messages and group chats
 - **Player Discovery**: Find players nearby or by skill level
 
@@ -115,7 +114,7 @@ Create a unified platform that grows the paintball sport by:
 ## Project Structure
 
 ```
-paintball-community-app/
+pbgearbag-core/
 ├── mobile/                  # React Native mobile app
 │   ├── src/
 │   │   ├── components/     # Reusable UI components
