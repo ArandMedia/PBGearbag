@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pbg_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pbg_test
+      DB_SSL: 'false'
+      JWT_SECRET: ci-access-secret-123456789
+      REFRESH_TOKEN_SECRET: ci-refresh-secret-987654321
+      FRONTEND_URL: http://localhost:8081
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=@pbg/shared
+      - run: npm run build --workspace=@pbg/backend
+      - run: npm run type-check --workspace=@pbg/mobile
+      - run: npm test --workspaces --if-present -- --runInBand --passWithNoTests
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run start:prod --workspace=@pbg/backend > /tmp/pbg-api.log 2>&1 &
+      - run: npx wait-on http://localhost:3000/api/v1/health/ready
+      - run: npm run test:launch

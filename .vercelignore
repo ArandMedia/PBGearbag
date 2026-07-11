@@ -1,0 +1,17 @@
+node_modules/
+**/node_modules/
+.git/
+.expo/
+mobile/dist/
+backend/dist/
+Content/
+*.mp4
+*.mov
+*.m4v
+*.avi
+*.zip
+*.db
+*.sqlite
+*.log
+.env
+**/.env

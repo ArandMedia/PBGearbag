@@ -1,0 +1,67 @@
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
+import { ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
+
+@Injectable()
+export class CommunityService {
+  constructor(private readonly db:DataSource,
+    @InjectRepository(Gearbag) private gearbags:Repository<Gearbag>, @InjectRepository(GearItem) private gearItems:Repository<GearItem>,
+    @InjectRepository(Team) private teams:Repository<Team>, @InjectRepository(TeamMember) private teamMembers:Repository<TeamMember>, @InjectRepository(TeamApplication) private applications:Repository<TeamApplication>,
+    @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(CommunityEvent) private events:Repository<CommunityEvent>, @InjectRepository(EventRsvp) private rsvps:Repository<EventRsvp>,
+    @InjectRepository(Conversation) private conversations:Repository<Conversation>, @InjectRepository(ConversationParticipant) private participants:Repository<ConversationParticipant>, @InjectRepository(Message) private messages:Repository<Message>,
+    @InjectRepository(Listing) private listings:Repository<Listing>, @InjectRepository(ListingFavorite) private favorites:Repository<ListingFavorite>, @InjectRepository(ListingOffer) private offers:Repository<ListingOffer>,
+    @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>) {}
+
+  async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
+  createGearbag(userId:string,data:Partial<Gearbag>){return this.gearbags.save(this.gearbags.create({...data,ownerId:userId}))}
+  async updateGearbag(userId:string,id:string,data:Partial<Gearbag>){const row=await this.owned(this.gearbags,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearbags.save(row)}
+  async removeGearbag(userId:string,id:string){await this.owned(this.gearbags,id,userId);await this.gearbags.delete(id)}
+  async addGearItem(userId:string,gearbagId:string,data:Partial<GearItem>){await this.owned(this.gearbags,gearbagId,userId);return this.gearItems.save(this.gearItems.create({...data,gearbagId,ownerId:userId}))}
+  async updateGearItem(userId:string,id:string,data:Partial<GearItem>){const row=await this.owned(this.gearItems,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearItems.save(row)}
+  async archiveGearItem(userId:string,id:string){return this.updateGearItem(userId,id,{isArchived:true})}
+
+  listTeams(search?:string){const q=this.teams.createQueryBuilder('team');if(search)q.where('team.name ILIKE :s OR team.city ILIKE :s',{s:`%${search}%`});return q.orderBy('team.createdAt','DESC').getMany()}
+  getTeam(slug:string){return this.teams.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Team not found');return x})}
+  async createTeam(userId:string,data:Partial<Team>){return this.db.transaction(async manager=>{const repo=manager.getRepository(Team);const slug=await this.uniqueSlug(repo,data.name||'team');const team=await repo.save(repo.create({...data,slug,ownerId:userId}));await manager.getRepository(TeamMember).save({teamId:team.id,userId,role:TeamMemberRole.OWNER,isActive:true});return team})}
+  async updateTeam(userId:string,id:string,data:Partial<Team>){await this.requireTeamManager(userId,id);const team=await this.teams.findOneByOrFail({id});Object.assign(team,data,{id,ownerId:team.ownerId,slug:team.slug});return this.teams.save(team)}
+  async applyTeam(userId:string,teamId:string,message?:string){if(await this.teamMembers.exist({where:{teamId,userId,isActive:true}}))throw new BadRequestException('Already a team member');const existing=await this.applications.findOne({where:{teamId,userId,status:ApplicationStatus.PENDING}});return existing||this.applications.save(this.applications.create({teamId,userId,message,status:ApplicationStatus.PENDING}))}
+  async teamApplications(userId:string,teamId:string){await this.requireTeamManager(userId,teamId);return this.applications.find({where:{teamId},order:{createdAt:'DESC'}})}
+  async decideApplication(userId:string,id:string,status:ApplicationStatus){const app=await this.applications.findOneBy({id});if(!app)throw new NotFoundException('Application not found');await this.requireTeamManager(userId,app.teamId);app.status=status;await this.applications.save(app);if(status===ApplicationStatus.APPROVED&&!await this.teamMembers.exist({where:{teamId:app.teamId,userId:app.userId}}))await this.teamMembers.save({teamId:app.teamId,userId:app.userId,role:TeamMemberRole.PLAYER,isActive:true});return app}
+
+  listOrganizations(type?:string){return type?this.organizations.find({where:{type:type as any},order:{name:'ASC'}}):this.organizations.find({order:{name:'ASC'}})}
+  getOrganization(slug:string){return this.organizations.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Organization not found');return x})}
+  async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
+  async claimOrganization(userId:string,id:string){const org=await this.organizations.findOneBy({id});if(!org)throw new NotFoundException('Organization not found');if(org.claimedById)throw new BadRequestException('Organization already claimed');org.claimedById=userId;return this.organizations.save(org)}
+
+  listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED},order:{startsAt:'ASC'}})}
+  getEvent(slug:string){return this.events.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
+  async createEvent(userId:string,data:Partial<CommunityEvent>){const slug=await this.uniqueSlug(this.events,data.title||'event');return this.events.save(this.events.create({...data,slug,organizerId:userId}))}
+  async updateEvent(userId:string,id:string,data:Partial<CommunityEvent>){const event=await this.events.findOneBy({id});if(!event)throw new NotFoundException('Event not found');if(event.organizerId!==userId)throw new ForbiddenException('Only the organizer can edit this event');Object.assign(event,data,{id,organizerId:userId,slug:event.slug});return this.events.save(event)}
+  async rsvpEvent(userId:string,eventId:string,status:RsvpStatus,visibility=Visibility.MEMBERS){const event=await this.events.findOneBy({id:eventId});if(!event||event.status!==EventStatus.PUBLISHED)throw new NotFoundException('Published event not found');let rsvp=await this.rsvps.findOne({where:{eventId,userId}});if(!rsvp)rsvp=this.rsvps.create({eventId,userId,status,visibility});else Object.assign(rsvp,{status,visibility});return this.rsvps.save(rsvp)}
+
+  async listConversations(userId:string){const memberships=await this.participants.find({where:{userId,leftAt:IsNull()}});if(!memberships.length)return [];return this.conversations.find({where:{id:In(memberships.map(x=>x.conversationId))},order:{lastMessageAt:'DESC',createdAt:'DESC'}})}
+  async createConversation(userId:string,type:any,participantIds:string[],subject?:string,contextId?:string){const ids=[...new Set([userId,...participantIds])];if(ids.length<2)throw new BadRequestException('A conversation needs another participant');return this.db.transaction(async manager=>{const c=await manager.getRepository(Conversation).save({type,subject,contextId,createdById:userId});await manager.getRepository(ConversationParticipant).save(ids.map(id=>({conversationId:c.id,userId:id})));return c})}
+  async conversationMessages(userId:string,conversationId:string){await this.requireParticipant(userId,conversationId);await this.participants.update({conversationId,userId},{lastReadAt:new Date()});return this.messages.find({where:{conversationId,deletedAt:IsNull()},order:{createdAt:'ASC'},take:100})}
+  async sendMessage(userId:string,conversationId:string,body:string,attachments?:string[]){await this.requireParticipant(userId,conversationId);const message=await this.messages.save(this.messages.create({conversationId,senderId:userId,body,attachments}));await this.conversations.update(conversationId,{lastMessageAt:message.createdAt});return message}
+
+  async favoriteListing(userId:string,listingId:string){await this.activeListing(listingId);const found=await this.favorites.findOne({where:{listingId,userId}});return found||this.favorites.save({listingId,userId})}
+  async unfavoriteListing(userId:string,listingId:string){await this.favorites.delete({listingId,userId})}
+  async myFavorites(userId:string){const favs=await this.favorites.find({where:{userId}});return favs.length?this.listings.find({where:{id:In(favs.map(x=>x.listingId))},relations:['seller']}):[]}
+  async makeOffer(userId:string,listingId:string,data:Partial<ListingOffer>){const listing=await this.activeListing(listingId);if(listing.sellerId===userId)throw new BadRequestException('You cannot offer on your own listing');return this.offers.save(this.offers.create({...data,listingId,buyerId:userId,status:OfferStatus.PENDING}))}
+  async listingOffers(userId:string,listingId:string){const listing=await this.listings.findOneBy({id:listingId});if(!listing)throw new NotFoundException('Listing not found');if(listing.sellerId!==userId)throw new ForbiddenException('Only the seller can view offers');return this.offers.find({where:{listingId},order:{createdAt:'DESC'}})}
+
+  myNotifications(userId:string){return this.notifications.find({where:{userId},order:{createdAt:'DESC'},take:100})}
+  async readNotification(userId:string,id:string){const n=await this.notifications.findOne({where:{id,userId}});if(!n)throw new NotFoundException('Notification not found');n.readAt=new Date();return this.notifications.save(n)}
+  createReport(userId:string,data:Partial<Report>){return this.reports.save(this.reports.create({...data,reporterId:userId,status:ReportStatus.OPEN}))}
+  listReports(){return this.reports.find({order:{createdAt:'DESC'}})}
+  async resolveReport(id:string,data:Partial<Report>){const report=await this.reports.findOneBy({id});if(!report)throw new NotFoundException('Report not found');Object.assign(report,data,{id});return this.reports.save(report)}
+  createReview(userId:string,data:Partial<Review>){if(!data.rating||data.rating<1||data.rating>5)throw new BadRequestException('Rating must be 1-5');return this.reviews.save(this.reviews.create({...data,authorId:userId}))}
+
+  private async owned<T extends {id:string;ownerId:string}>(repo:Repository<T>,id:string,userId:string){const row=await repo.findOne({where:{id} as any});if(!row)throw new NotFoundException('Record not found');if(row.ownerId!==userId)throw new ForbiddenException('You do not own this record');return row}
+  private async requireTeamManager(userId:string,teamId:string){const member=await this.teamMembers.findOne({where:{teamId,userId,isActive:true}});if(!member||![TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN].includes(member.role))throw new ForbiddenException('Team manager access required');return member}
+  private async requireParticipant(userId:string,conversationId:string){const p=await this.participants.findOne({where:{conversationId,userId,leftAt:IsNull()}});if(!p)throw new ForbiddenException('Conversation membership required');return p}
+  private async activeListing(id:string){const listing=await this.listings.findOneBy({id,status:ListingStatus.ACTIVE});if(!listing)throw new NotFoundException('Active listing not found');return listing}
+  private async uniqueSlug<T extends {slug:string}>(repo:Repository<T>,value:string){const base=value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'item';let slug=base,i=1;while(await repo.exist({where:{slug} as any}))slug=`${base}-${++i}`;return slug}
+}

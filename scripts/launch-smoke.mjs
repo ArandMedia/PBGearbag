@@ -1,0 +1,20 @@
+const base=process.env.API_URL||'http://localhost:3000/api/v1';
+const stamp=Date.now();let token='';
+const call=async(path,{method='GET',body,auth=true}={})=>{const r=await fetch(base+path,{method,headers:{'content-type':'application/json',...(auth&&token?{authorization:`Bearer ${token}`}:{})},body:body?JSON.stringify(body):undefined});const text=await r.text();let data;try{data=JSON.parse(text)}catch{data=text}if(!r.ok)throw new Error(`${method} ${path} -> ${r.status}: ${text}`);return data};
+const assert=(condition,message)=>{if(!condition)throw new Error(`Assertion failed: ${message}`)};
+
+const registration=await call('/auth/register',{method:'POST',auth:false,body:{email:`launch-smoke-${stamp}@example.com`,username:`launch_smoke_${stamp}`,password:'Paintball123!',ageConfirmed:true,acceptedTerms:true}});
+assert(registration.accessToken,'registration returns access token');assert(registration.verificationToken,'development verification token returned');token=registration.accessToken;
+await call('/auth/verify-email',{method:'POST',auth:false,body:{token:registration.verificationToken}});
+const bag=await call('/gearbags',{method:'POST',body:{name:'Launch Test Gearbag',visibility:'private',isPrimary:true}});assert(bag.id,'gearbag created');
+const item=await call(`/gearbags/${bag.id}/items`,{method:'POST',body:{name:'Launch Test Marker',category:'marker',manufacturer:'PBG Test',model:'V1',condition:'excellent'}});assert(item.ownerId===registration.user.id,'gear ownership recorded');
+const team=await call('/teams',{method:'POST',body:{name:`Launch Team ${stamp}`,teamType:'speedball',description:'Launch test roster',isRecruiting:true}});assert(team.slug,'team created with slug');
+const org=await call('/organizations/suggestions',{method:'POST',body:{name:`Launch Field ${stamp}`,type:'field',description:'Launch test field',city:'St. Louis',region:'MO'}});assert(org.isVerified===false,'organization suggestion unverified');
+const start=new Date(Date.now()+7*86400000),end=new Date(start.getTime()+6*3600000);
+let event=await call('/events',{method:'POST',body:{title:`Launch Event ${stamp}`,eventType:'open_play',description:'Launch test event',startsAt:start.toISOString(),endsAt:end.toISOString(),timezone:'America/Chicago',city:'St. Louis',region:'MO'}});event=await call(`/events/${event.id}`,{method:'PATCH',body:{status:'published'}});await call(`/events/${event.id}/rsvp`,{method:'POST',body:{status:'going'}});
+const demoLogin=await call('/auth/login',{method:'POST',auth:false,body:{usernameOrEmail:'demo@pbgearbag.com',password:'Paintball123!'}});const demoId=demoLogin.user.id;
+const conversation=await call('/conversations',{method:'POST',body:{type:'direct',participantIds:[demoId],subject:'Launch smoke conversation'}});const message=await call(`/conversations/${conversation.id}/messages`,{method:'POST',body:{body:'Launch test message'}});assert(message.body==='Launch test message','message persisted');
+const listings=await call('/marketplace',{auth:false});assert(listings.items.length>0,'seed listings available');await call(`/marketplace/${listings.items[0].id}/favorite`,{method:'POST'});await call(`/marketplace/${listings.items[0].id}/offers`,{method:'POST',body:{amountCents:50000,message:'Launch test offer'}});
+const report=await call('/reports',{method:'POST',body:{subjectId:listings.items[0].id,subjectType:'listing',category:'other',description:'Launch smoke moderation report.'}});assert(report.status==='open','report enters queue');
+const forgot=await call('/auth/forgot-password',{method:'POST',auth:false,body:{email:`launch-smoke-${stamp}@example.com`}});await call('/auth/reset-password',{method:'POST',auth:false,body:{token:forgot.resetToken,password:'NewPaintball123!'}});const relog=await call('/auth/login',{method:'POST',auth:false,body:{usernameOrEmail:`launch-smoke-${stamp}@example.com`,password:'NewPaintball123!'}});assert(relog.accessToken,'reset password authenticates');
+console.log('PBGearbag launch smoke passed: auth, verification, reset, gearbag, teams, organizations, events, RSVP, messages, marketplace trust, and reports.');
