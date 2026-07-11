@@ -93,6 +93,10 @@ export class User {
   @Exclude()
   refreshToken?: string;
 
+  @Column({ name: 'stripe_customer_id', nullable: true })
+  @Exclude()
+  stripeCustomerId?: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

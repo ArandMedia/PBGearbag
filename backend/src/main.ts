@@ -5,12 +5,20 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import compression from 'compression';
+import * as express from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Body parsing is disabled here and configured manually below — the
+  // Stripe webhook route needs the raw, unparsed request body to verify
+  // its signature, so it can't go through Nest's default JSON parser.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   const configService = app.get(ConfigService);
+
+  const apiPrefix = configService.get('API_PREFIX') || 'api/v1';
 
   // Serve static files
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
@@ -31,8 +39,17 @@ async function bootstrap() {
   // Compression
   app.use(compression());
 
+  // Body parsing — the Stripe webhook is registered first so it gets the
+  // raw Buffer body Stripe's signature check requires; every other route
+  // falls through to normal JSON/urlencoded parsing.
+  app.use(
+    `/${apiPrefix}/billing/webhook`,
+    express.raw({ type: 'application/json' }),
+  );
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
   // Global prefix
-  const apiPrefix = configService.get('API_PREFIX') || 'api/v1';
   app.setGlobalPrefix(apiPrefix);
 
   // Validation
@@ -59,6 +76,7 @@ async function bootstrap() {
     .addTag('streaming', 'Live streaming')
     .addTag('rankings', 'Player and team rankings')
     .addTag('brands', 'Brand partnerships')
+    .addTag('billing', 'Subscriptions and payments')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

@@ -98,6 +98,13 @@ export class UsersService {
     });
   }
 
+  async updateStripeCustomerId(
+    id: string,
+    stripeCustomerId: string,
+  ): Promise<void> {
+    await this.usersRepository.update(id, { stripeCustomerId });
+  }
+
   async remove(id: string): Promise<void> {
     await this.usersRepository.delete(id);
   }

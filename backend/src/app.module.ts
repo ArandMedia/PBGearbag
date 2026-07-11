@@ -13,6 +13,7 @@ import { SocialModule } from './social/social.module';
 import { StreamingModule } from './streaming/streaming.module';
 import { RankingsModule } from './rankings/rankings.module';
 import { BrandsModule } from './brands/brands.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { BrandsModule } from './brands/brands.module';
     StreamingModule,
     RankingsModule,
     BrandsModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
