@@ -1,8 +1,8 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './tokenStorage';
 
 // Get API URL from environment or use default
-const API_URL = process.env.API_URL || 'http://localhost:3000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
 export interface ApiError {
   message: string;

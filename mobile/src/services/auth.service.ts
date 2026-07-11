@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './tokenStorage';
 
 export interface User {
   id: string;

@@ -43,7 +43,7 @@ export default {
     web: {
       favicon: "./assets/favicon.png",
       bundler: "metro",
-      output: "static",
+      output: "single",
       build: {
         babel: {
           include: [
