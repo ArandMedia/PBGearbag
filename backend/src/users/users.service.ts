@@ -100,11 +100,18 @@ export class UsersService {
   async applyPendingEmailChange(id:string,email:string):Promise<void>{await this.usersRepository.update(id,{email,pendingEmail:null as any})}
 
   async remove(id: string): Promise<void> {
-    // Most tables cascade cleanly from users(id), but listing_offers and
-    // listing_favorites carry a legacy constraint (from an early
-    // synchronize:true deploy) that isn't ON DELETE CASCADE, so deleting a
-    // user with an active listing that has offers/favorites on it 500s
-    // unless those rows are cleared first.
+    // An early synchronize:true deploy (before this project switched to
+    // migrations) left a few tables with a SECOND, non-cascading foreign
+    // key constraint duplicating one the migrations already created with
+    // ON DELETE CASCADE. Postgres enforces every constraint on a column,
+    // so the duplicate blocks the delete regardless of the good one.
+    // Confirmed against production: it's exactly the tables backing
+    // entities that declare @ManyToOne(() => User) without an explicit
+    // onDelete — Listing.seller, SocialPost.author, SocialComment.author.
+    // Explicitly clearing those rows (children first) sidesteps the bad
+    // constraint entirely instead of depending on any cascade behavior.
+    // Casts are ::text because the synchronize-era columns ended up typed
+    // varchar instead of uuid, and uuid/varchar comparisons need one.
     await this.dataSource.transaction(async (manager) => {
       await manager.query(
         `DELETE FROM listing_offers WHERE buyer_id::text = $1::text OR listing_id::text IN (SELECT id::text FROM listings WHERE seller_id::text = $1::text)`,
@@ -114,6 +121,16 @@ export class UsersService {
         `DELETE FROM listing_favorites WHERE user_id::text = $1::text OR listing_id::text IN (SELECT id::text FROM listings WHERE seller_id::text = $1::text)`,
         [id],
       );
+      await manager.query(`DELETE FROM listings WHERE seller_id::text = $1::text`, [id]);
+      await manager.query(
+        `DELETE FROM social_reactions WHERE user_id::text = $1::text OR post_id::text IN (SELECT id::text FROM social_posts WHERE author_id::text = $1::text)`,
+        [id],
+      );
+      await manager.query(
+        `DELETE FROM social_comments WHERE author_id::text = $1::text OR post_id::text IN (SELECT id::text FROM social_posts WHERE author_id::text = $1::text)`,
+        [id],
+      );
+      await manager.query(`DELETE FROM social_posts WHERE author_id::text = $1::text`, [id]);
       await manager.delete(User, id);
     });
   }
