@@ -136,5 +136,34 @@ export class AuthService {
   private hashToken(token:string){return createHash('sha256').update(token).digest('hex')}
   private async issueToken(user:User,type:AuthTokenType,minutes:number){await this.authTokens.delete({userId:user.id,type,usedAt:IsNull()});const token=randomBytes(32).toString('hex');await this.authTokens.save({userId:user.id,type,tokenHash:this.hashToken(token),expiresAt:new Date(Date.now()+minutes*60000)});return token}
   private async consumeToken(token:string,type:AuthTokenType){const row=await this.authTokens.findOne({where:{tokenHash:this.hashToken(token),type,usedAt:IsNull()}});if(!row||row.expiresAt<=new Date())throw new UnauthorizedException('Token is invalid or expired');row.usedAt=new Date();return this.authTokens.save(row)}
-  private async deliverToken(email:string,token:string,type:AuthTokenType){const host=this.configService.get<string>('SMTP_HOST');if(!host)return;const transport=nodemailer.createTransport({host,port:Number(this.configService.get('SMTP_PORT')||587),secure:false,auth:{user:this.configService.get('SMTP_USER'),pass:this.configService.get('SMTP_PASSWORD')}});const base=this.configService.get('FRONTEND_URL')||'http://localhost:8081';const path=type===AuthTokenType.VERIFY?'verify-email':'reset-password';await transport.sendMail({from:this.configService.get('EMAIL_FROM')||'noreply@pbgearbag.com',to:email,subject:type===AuthTokenType.VERIFY?'Verify your PBGearbag account':'Reset your PBGearbag password',text:`Open ${base}/${path}?token=${token}`})}
+  // Resend (HTTPS API, port 443) is preferred over raw SMTP: Render's free
+  // tier blocks outbound SMTP ports at the network level, so nodemailer
+  // just times out there regardless of how correct the credentials are.
+  // SMTP stays as a fallback for hosts that don't block it.
+  private async deliverToken(email:string,token:string,type:AuthTokenType){
+    const base=this.configService.get('FRONTEND_URL')||'http://localhost:8081';
+    const path=type===AuthTokenType.VERIFY?'verify-email':'reset-password';
+    const subject=type===AuthTokenType.VERIFY?'Verify your PBGearbag account':'Reset your PBGearbag password';
+    const text=`Open ${base}/${path}?token=${token}`;
+    const from=this.configService.get('EMAIL_FROM')||'PBGearbag <noreply@arandmedia.com>';
+
+    const resendKey=this.configService.get<string>('RESEND_API_KEY');
+    if(resendKey){
+      const res=await fetch('https://api.resend.com/emails',{
+        method:'POST',
+        headers:{Authorization:`Bearer ${resendKey}`,'Content-Type':'application/json'},
+        body:JSON.stringify({from,to:email,subject,text}),
+      });
+      if(!res.ok){
+        const body=await res.text().catch(()=>'');
+        throw new Error(`Resend send failed: ${res.status} ${body}`);
+      }
+      return;
+    }
+
+    const host=this.configService.get<string>('SMTP_HOST');
+    if(!host)return;
+    const transport=nodemailer.createTransport({host,port:Number(this.configService.get('SMTP_PORT')||587),secure:false,auth:{user:this.configService.get('SMTP_USER'),pass:this.configService.get('SMTP_PASSWORD')}});
+    await transport.sendMail({from,to:email,subject,text});
+  }
 }
