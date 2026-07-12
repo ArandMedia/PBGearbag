@@ -1,37 +1,24 @@
+# This Dockerfile is built with the repo root as the Docker build context
+# (Render: Root Directory empty, Dockerfile Path backend/Dockerfile, Docker
+# Build Context Directory .) because the app is an npm-workspaces monorepo
+# with a single lockfile at the repo root, not one per package.
+
 # Development Dockerfile
 FROM node:18-alpine AS development
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
+COPY backend/package*.json ./backend/
+COPY mobile/package.json ./mobile/
+COPY shared/package.json ./shared/
 RUN npm install
 
-# Copy source code
 COPY . .
 
-# Expose port
 EXPOSE 3000
 
-# Start development server
-CMD ["npm", "run", "start:dev"]
-
-# Production Build Stage
-FROM node:18-alpine AS build
-
-WORKDIR /app
-
-# Install dependencies
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
-RUN cp -R node_modules prod_node_modules
-RUN npm ci
-
-# Build application
-COPY . .
-RUN npm run build
+CMD ["npm", "run", "start:dev", "--workspace=@pbg/backend"]
 
 # Production Stage
 FROM node:18-alpine AS production
@@ -40,20 +27,25 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+COPY mobile/package.json ./mobile/
+COPY shared/package.json ./shared/
+RUN npm ci
+
+COPY . .
+RUN npm run build --workspace=@pbg/backend
+
 # Create app user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
 
-# Copy dependencies and built files
-COPY --from=build /app/prod_node_modules ./node_modules
-COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
-COPY --from=build --chown=nestjs:nodejs /app/package*.json ./
-
-# Create uploads directory with proper permissions
-RUN mkdir -p uploads/avatars uploads/banners uploads/listings && \
-    chown -R nestjs:nodejs uploads
+RUN mkdir -p backend/uploads/avatars backend/uploads/banners backend/uploads/listings && \
+    chown -R nestjs:nodejs backend
 
 USER nestjs
+
+WORKDIR /app/backend
 
 EXPOSE 3000
 
