@@ -52,7 +52,7 @@ export default function LandingScreen({ navigation }: any) {
   ];
   return (
     <ImageBackground
-      source={require("../../assets/brand/pbgearbag-hero-montage-v1.png")}
+      source={require("../../assets/brand/pbgearbag-hero-montage-v1.jpg")}
       style={[s.bg, { width: "100vw", alignSelf: "stretch" }]}
       imageStyle={[s.bgImage, compact && s.bgMobile]}
     >

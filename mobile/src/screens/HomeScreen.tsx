@@ -14,28 +14,28 @@ import { useAuth } from "../store/AuthContext";
 
 const slides = [
   {
-    image: require("../../assets/brand/pbgearbag-hero-v1.png"),
+    image: require("../../assets/brand/pbgearbag-hero-v1.jpg"),
     label: "TOURNAMENT / SPEEDBALL",
     eyebrow: "THE COMPETITIVE EDGE",
     title: "Built for the\nnext breakout.",
     body: "Follow the tournament scene, sharpen your setup, and find the players pushing the game forward.",
   },
   {
-    image: require("../../assets/brand/pbgearbag-hero-rec-v2.png"),
+    image: require("../../assets/brand/pbgearbag-hero-rec-v2.jpg"),
     label: "RECREATIONAL / COMMUNITY",
     eyebrow: "OPEN PLAY / COMMUNITY",
     title: "There’s always\nanother game.",
     body: "From a first rental day to a regular weekend crew, find the next reason to get back on the field.",
   },
   {
-    image: require("../../assets/brand/pbgearbag-hero-woods-v2.png"),
+    image: require("../../assets/brand/pbgearbag-hero-woods-v2.jpg"),
     label: "WOODSBALL / SCENARIO",
     eyebrow: "ADVENTURE STARTS HERE",
     title: "Go deeper into\nthe game.",
     body: "Discover scenario weekends, local fields, and the field-tested gear built for long days in the woods.",
   },
   {
-    image: require("../../assets/brand/pbgearbag-hero-classic-v2.png"),
+    image: require("../../assets/brand/pbgearbag-hero-classic-v2.jpg"),
     label: "MECHANICAL / CLASSIC",
     eyebrow: "RESPECT THE ROOTS",
     title: "The old school\nstill hits hard.",

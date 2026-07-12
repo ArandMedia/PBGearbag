@@ -42,18 +42,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
-    try {
-      const hasToken = await authService.hasToken();
-      if (hasToken) {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      // Token might be invalid, clear it
-      await authService.logout();
-    } finally {
+    // Paint an optimistic UI from the token's own claims immediately —
+    // don't make every app load wait on a network round trip (which can
+    // take 20+ seconds if the backend free-tier instance is cold). The
+    // full profile fills in from /auth/me in the background below.
+    const optimistic = await authService.decodeStoredToken();
+    if (optimistic) {
+      setUser({
+        ...optimistic,
+        isVerified: true,
+        isActive: true,
+        ageConfirmed: true,
+        createdAt: '',
+        updatedAt: '',
+      } as any);
       setLoading(false);
+    } else {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        // Token is genuinely invalid/revoked, not just a slow/offline backend.
+        await authService.logout();
+        setUser(null);
+      } else {
+        console.error('Background auth refresh failed:', error);
+      }
     }
   };
 

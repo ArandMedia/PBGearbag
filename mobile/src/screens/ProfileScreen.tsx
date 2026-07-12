@@ -25,7 +25,7 @@ const TURF = "#A8C84A",
   INK = "#0A0E0F",
   PANEL = "#121819",
   ORANGE = "#E8743B";
-const defaultCover = require("../../assets/brand/pbgearbag-hero-classic-v2.png");
+const defaultCover = require("../../assets/brand/pbgearbag-hero-classic-v2.jpg");
 const loadouts: Record<
   string,
   { label: string; description: string; essentials: string[] }

@@ -157,6 +157,32 @@ class AuthService {
     const token = await tokenStorage.get("accessToken");
     return !!token;
   }
+
+  // Decodes the JWT payload locally (no signature check — this is only
+  // used to paint an optimistic UI instantly on load; every real request
+  // still gets independently authorized by the backend) so app startup
+  // doesn't have to block on a network round trip just to know who's
+  // logged in.
+  async decodeStoredToken(): Promise<Pick<User, "id" | "email" | "username" | "roles"> | null> {
+    const token = await tokenStorage.get("accessToken");
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(
+        decodeURIComponent(
+          atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+            .split("")
+            .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+            .join(""),
+        ),
+      );
+      if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
+        return null;
+      }
+      return { id: payload.sub, email: payload.email, username: payload.username, roles: payload.roles };
+    } catch {
+      return null;
+    }
+  }
   async verifyEmail(token: string): Promise<void> {
     await apiClient.post("/auth/verify-email", { token });
   }

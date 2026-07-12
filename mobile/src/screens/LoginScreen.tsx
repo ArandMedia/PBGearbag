@@ -13,7 +13,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useAuth } from '../store/AuthContext';
-const hero = require('../../assets/brand/pbgearbag-hero-v1.png');
+const hero = require('../../assets/brand/pbgearbag-hero-v1.jpg');
 
 export default function LoginScreen({ navigation }: any) {
   const { login, loading, error } = useAuth();
