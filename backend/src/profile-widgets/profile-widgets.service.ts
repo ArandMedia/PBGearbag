@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { BillingService } from '../billing/billing.service';
 import { ProfileWidget } from './entities/profile-widget.entity';
 import { WIDGET_DEFINITIONS, WIDGET_KEYS } from './widget-registry';
 
@@ -8,6 +9,7 @@ import { WIDGET_DEFINITIONS, WIDGET_KEYS } from './widget-registry';
 export class ProfileWidgetsService {
   constructor(
     @InjectRepository(ProfileWidget) private widgets: Repository<ProfileWidget>,
+    private billing: BillingService,
   ) {}
 
   catalog() {
@@ -28,6 +30,13 @@ export class ProfileWidgetsService {
   async add(userId: string, widgetKey: string, config: Record<string, any> = {}) {
     if (!WIDGET_KEYS.has(widgetKey)) {
       throw new BadRequestException(`Unknown widget type: ${widgetKey}`);
+    }
+    // Widget customization is a Pro perk. Existing widgets on a lapsed
+    // subscription keep working (update/remove/reorder stay open below),
+    // but adding new ones requires an active plan.
+    const { isPro } = await this.billing.getStatus(userId);
+    if (!isPro) {
+      throw new ForbiddenException('Upgrade to PBG Pro to add custom profile widgets.');
     }
     const count = await this.widgets.count({ where: { userId } });
     return this.widgets.save(

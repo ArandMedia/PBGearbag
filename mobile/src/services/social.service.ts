@@ -25,6 +25,22 @@ export type FeedComment = {
   createdAt: string;
   author: { username: string; displayName?: string; avatarUrl?: string };
 };
+export type RelationshipCounts = { followerCount: number; followingCount: number };
+export type SocialProfileSummary = {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  isVerified: boolean;
+  city?: string;
+  playStyle?: string[];
+};
+export type SocialProfilePage = {
+  items: SocialProfileSummary[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
 export const socialService = {
   async feed(following = false) {
     return (
@@ -57,6 +73,18 @@ export const socialService = {
     return (await apiClient.post(`/feed/${id}/comments`, { body })).data;
   },
   async follow(userId: string) {
-    return (await apiClient.post(`/feed/users/${userId}/follow`)).data;
+    return (await apiClient.post<{ active: boolean }>(`/feed/users/${userId}/follow`)).data;
+  },
+  async relationship(userId: string) {
+    return (await apiClient.get<RelationshipCounts>(`/feed/users/${userId}/relationship`)).data;
+  },
+  async followers(userId: string, page = 1) {
+    return (await apiClient.get<SocialProfilePage>(`/feed/users/${userId}/followers`, { params: { page } })).data;
+  },
+  async followingOf(userId: string, page = 1) {
+    return (await apiClient.get<SocialProfilePage>(`/feed/users/${userId}/following`, { params: { page } })).data;
+  },
+  async myFollowing() {
+    return (await apiClient.get<{ followingId: string }[]>("/feed/following")).data;
   },
 };

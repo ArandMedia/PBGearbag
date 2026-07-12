@@ -42,6 +42,7 @@ import VerifyEmailScreen from "../screens/VerifyEmailScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
+import FollowListScreen from "../screens/FollowListScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
@@ -287,6 +288,11 @@ function MainStack() {
         name="PublicProfile"
         component={PublicProfileScreen}
         options={detailOptions("Player Profile")}
+      />
+      <Stack.Screen
+        name="FollowList"
+        component={FollowListScreen}
+        options={detailOptions("Connections")}
       />
       <Stack.Screen
         name="CommunityEntity"

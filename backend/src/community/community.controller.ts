@@ -78,4 +78,5 @@ export class ReportsController { constructor(private s:CommunityService){} @Post
 export class ProfileDataController { constructor(private s:CommunityService){}
   @Get(':userId/team') @Public() team(@Param('userId')userId:string){return this.s.myTeam(userId)}
   @Get(':userId/upcoming-events') @Public() upcomingEvents(@Param('userId')userId:string){return this.s.myUpcomingEvents(userId)}
+  @Get(':userId/gearbag') @Public() gearbag(@Param('userId')userId:string){return this.s.primaryGearbagFor(userId)}
 }

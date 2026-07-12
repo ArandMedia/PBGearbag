@@ -19,6 +19,7 @@ import { communityService, Gearbag } from "../services/community.service";
 import { Listing, marketplaceService } from "../services/marketplace.service";
 import { billingService, BillingStatus } from "../services/billing.service";
 import { ProfileWidget, widgetsService } from "../services/widgets.service";
+import { RelationshipCounts, socialService } from "../services/social.service";
 import { WidgetRenderer } from "../components/WidgetCards";
 
 const TURF = "#A8C84A",
@@ -143,6 +144,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [widgets, setWidgets] = useState<ProfileWidget[]>([]);
   const [team, setTeam] = useState<any>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [relationship, setRelationship] = useState<RelationshipCounts | null>(null);
   useEffect(() => {
     Promise.all([
       communityService.gearbags(),
@@ -164,6 +166,7 @@ export default function ProfileScreen({ navigation }: any) {
       widgetsService.mine().then(setWidgets).catch(() => {});
       communityService.myTeam(user.id).then(setTeam).catch(() => {});
       communityService.upcomingEvents(user.id).then(setUpcomingEvents).catch(() => {});
+      socialService.relationship(user.id).then(setRelationship).catch(() => {});
     }
   }, [user?.id]);
   const upgrade = async (plan: "monthly" | "yearly") => {
@@ -234,6 +237,20 @@ export default function ProfileScreen({ navigation }: any) {
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: logout },
     ]);
+  const openCustomizeWidgets = () => {
+    if (billing?.isPro) {
+      navigation.getParent()?.navigate("CustomizeWidgets");
+      return;
+    }
+    Alert.alert(
+      "Unlock custom widgets",
+      "Profile widgets are a PBG Pro feature — pick from loadout, stats, achievements, social links, and more for $4/mo or $24/yr.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Upgrade", onPress: () => upgrade("monthly") },
+      ],
+    );
+  };
   return (
     <ScrollView
       style={s.page}
@@ -284,6 +301,12 @@ export default function ProfileScreen({ navigation }: any) {
                 <Text style={s.verifiedText}>VERIFIED</Text>
               </View>
             )}
+            {billing?.isPro && (
+              <View style={s.proBadge}>
+                <Ionicons name="star" size={10} color="#10140D" />
+                <Text style={s.proBadgeText}>PRO</Text>
+              </View>
+            )}
           </View>
           <View style={s.metaLine}>
             {location && <Text style={s.identityMeta}>⌖ {location}</Text>}
@@ -325,6 +348,28 @@ export default function ProfileScreen({ navigation }: any) {
       </View>
 
       <View style={s.stats}>
+        <Stat
+          value={relationship?.followerCount ?? 0}
+          label="FOLLOWERS"
+          onPress={() =>
+            navigation.getParent()?.navigate("FollowList", {
+              userId: user.id,
+              mode: "followers",
+              title: displayName,
+            })
+          }
+        />
+        <Stat
+          value={relationship?.followingCount ?? 0}
+          label="FOLLOWING"
+          onPress={() =>
+            navigation.getParent()?.navigate("FollowList", {
+              userId: user.id,
+              mode: "following",
+              title: displayName,
+            })
+          }
+        />
         <Stat
           value={bag?.items?.length || 0}
           label="GEAR ITEMS"
@@ -569,12 +614,14 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={s.quickText}>Notifications</Text>
               <Text style={s.rowArrow}>→</Text>
             </Pressable>
-            <Pressable
-              style={s.quickRow}
-              onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
-            >
+            <Pressable style={s.quickRow} onPress={openCustomizeWidgets}>
               <Ionicons name="apps-outline" size={18} color={TURF} />
               <Text style={s.quickText}>Customize profile widgets</Text>
+              {!billing?.isPro && (
+                <View style={s.proChip}>
+                  <Text style={s.proChipText}>PRO</Text>
+                </View>
+              )}
               <Text style={s.rowArrow}>→</Text>
             </Pressable>
             {user.roles?.some((x) => x === "admin" || x === "moderator") && (
@@ -646,11 +693,16 @@ export default function ProfileScreen({ navigation }: any) {
       <View style={s.sectionHeader}>
         <View>
           <Text style={s.eyebrow}>PLUGINS</Text>
-          <Text style={s.sectionTitle}>Profile widgets</Text>
+          <View style={s.widgetTitleRow}>
+            <Text style={s.sectionTitle}>Profile widgets</Text>
+            {!billing?.isPro && (
+              <View style={s.proChip}>
+                <Text style={s.proChipText}>PRO</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <Pressable
-          onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
-        >
+        <Pressable onPress={openCustomizeWidgets}>
           <Text style={s.textLink}>CUSTOMIZE →</Text>
         </Pressable>
       </View>
@@ -667,15 +719,28 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
             ))}
         </View>
-      ) : (
-        <Pressable
-          style={s.widgetEmpty}
-          onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
-        >
+      ) : billing?.isPro ? (
+        <Pressable style={s.widgetEmpty} onPress={openCustomizeWidgets}>
           <Ionicons name="apps-outline" size={20} color={TURF} />
           <Text style={s.widgetEmptyText}>
             Add widgets to customize your profile for how you play.
           </Text>
+        </Pressable>
+      ) : (
+        <Pressable style={s.widgetUpsell} onPress={openCustomizeWidgets}>
+          <View style={s.widgetUpsellIcon}>
+            <Ionicons name="star" size={18} color={ORANGE} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.widgetUpsellTitle}>
+              Unlock custom profile widgets
+            </Text>
+            <Text style={s.widgetUpsellText}>
+              PBG Pro lets you build your profile out of loadout, stats,
+              achievements, social links, and more — $4/mo or $24/yr.
+            </Text>
+          </View>
+          <Text style={s.textLink}>UPGRADE →</Text>
         </Pressable>
       )}
     </ScrollView>
@@ -814,6 +879,35 @@ const s = StyleSheet.create({
   verifiedText: {
     color: "#10140D",
     fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  proBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: ORANGE,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  proBadgeText: {
+    color: "#10140D",
+    fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  proChip: {
+    backgroundColor: "rgba(232,116,59,.16)",
+    borderWidth: 1,
+    borderColor: "rgba(232,116,59,.4)",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proChipText: {
+    color: ORANGE,
+    fontSize: 8,
     fontWeight: "900",
     letterSpacing: 0.7,
   },
@@ -1147,4 +1241,32 @@ const s = StyleSheet.create({
     marginBottom: 20,
   },
   widgetEmptyText: { color: "#9DA9A3", fontSize: 12, flex: 1 },
+  widgetTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  widgetUpsell: {
+    borderWidth: 1,
+    borderColor: "#5C4B2E",
+    backgroundColor: "#181410",
+    borderRadius: 13,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  widgetUpsellIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(232,116,59,.14)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  widgetUpsellTitle: { color: "#F3F1E8", fontSize: 14, fontWeight: "900" },
+  widgetUpsellText: {
+    color: "#9DA9A3",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3,
+  },
 });

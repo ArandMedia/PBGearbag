@@ -20,6 +20,7 @@ import {
   MaxLength,
 } from "class-validator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { Public } from "../auth/decorators/public.decorator";
 import { UploadService } from "../common/services/upload.service";
 import { User } from "../users/entities/user.entity";
 import { PostType, ReactionType } from "./social.entity";
@@ -100,5 +101,22 @@ export class SocialController {
   }
   @Get("following") following(@CurrentUser() u: User) {
     return this.social.following(u.id);
+  }
+  @Get("users/:id/relationship") @Public() relationship(
+    @Param("id") id: string,
+  ) {
+    return this.social.relationshipCounts(id);
+  }
+  @Get("users/:id/followers") @Public() followers(
+    @Param("id") id: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.social.followersList(id, page);
+  }
+  @Get("users/:id/following") @Public() userFollowing(
+    @Param("id") id: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.social.followingList(id, page);
   }
 }

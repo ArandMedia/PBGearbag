@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { User } from "../users/entities/user.entity";
 import {
   PostType,
   ReactionType,
@@ -19,6 +20,7 @@ export class SocialService {
     @InjectRepository(SocialComment)
     private comments: Repository<SocialComment>,
     @InjectRepository(SocialFollow) private follows: Repository<SocialFollow>,
+    @InjectRepository(User) private users: Repository<User>,
   ) {}
   async feed(userId: string, page = 1, limit = 20, onlyFollowing = false) {
     const follows = onlyFollowing
@@ -172,5 +174,58 @@ export class SocialService {
       order: { createdAt: "DESC" },
       take: 100,
     });
+  }
+  async relationshipCounts(userId: string) {
+    const [followerCount, followingCount] = await Promise.all([
+      this.follows.count({ where: { followingId: userId } }),
+      this.follows.count({ where: { followerId: userId } }),
+    ]);
+    return { followerCount, followingCount };
+  }
+  private async hydrate(ids: string[]) {
+    if (!ids.length) return [];
+    const rows = await this.users
+      .createQueryBuilder("u")
+      .select([
+        "u.id",
+        "u.username",
+        "u.displayName",
+        "u.avatarUrl",
+        "u.isVerified",
+        "u.city",
+        "u.playStyle",
+      ])
+      .where("u.id IN (:...ids)", { ids })
+      .getMany();
+    const byId = new Map(rows.map((u) => [u.id, u]));
+    return ids.map((id) => byId.get(id)).filter(Boolean);
+  }
+  async followersList(userId: string, page = 1, limit = 30) {
+    const [rows, total] = await this.follows.findAndCount({
+      where: { followingId: userId },
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      items: await this.hydrate(rows.map((r) => r.followerId)),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+  async followingList(userId: string, page = 1, limit = 30) {
+    const [rows, total] = await this.follows.findAndCount({
+      where: { followerId: userId },
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      items: await this.hydrate(rows.map((r) => r.followingId)),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

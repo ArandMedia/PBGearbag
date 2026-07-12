@@ -71,6 +71,7 @@ export class MarketplaceController {
     @Query('acceptsTrades') acceptsTrades?: string,
     @Query('shippingAvailable') shippingAvailable?: string,
     @Query('localPickup') localPickup?: string,
+    @Query('sellerId') sellerId?: string,
   ) {
     const [listings, total] = await this.marketplaceService.findAll(
       page,
@@ -82,6 +83,7 @@ export class MarketplaceController {
         maxPrice: maxPrice ? parseFloat(maxPrice.toString()) : undefined,
         location,
         brand,
+        sellerId,
         searchQuery: search,
         sort,
         isNegotiable: isNegotiable === undefined ? undefined : isNegotiable === 'true',

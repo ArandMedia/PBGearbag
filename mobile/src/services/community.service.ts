@@ -23,6 +23,7 @@ export const communityService={
   async team(slug:string){return (await apiClient.get<Team>(`/teams/${slug}`)).data},
   async myTeam(userId:string){return (await apiClient.get<(Team&{role:string})|null>(`/profile-data/${userId}/team`)).data},
   async upcomingEvents(userId:string){return (await apiClient.get<Event[]>(`/profile-data/${userId}/upcoming-events`)).data},
+  async gearbagFor(userId:string){return (await apiClient.get<Gearbag|null>(`/profile-data/${userId}/gearbag`)).data},
   async conversations(){return (await apiClient.get<Conversation[]>('/conversations')).data}, async messages(id:string){return (await apiClient.get<Message[]>(`/conversations/${id}/messages`)).data}, async sendMessage(id:string,body:string){return (await apiClient.post<Message>(`/conversations/${id}/messages`,{body})).data},
   async createConversation(data:{type:string;participantIds:string[];subject?:string;contextId?:string}){return (await apiClient.post<Conversation>('/conversations',data)).data},
   async notifications(){return (await apiClient.get<Notification[]>('/notifications')).data}, async readNotification(id:string){return (await apiClient.patch(`/notifications/${id}/read`)).data},

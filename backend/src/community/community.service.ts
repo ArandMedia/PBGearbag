@@ -15,6 +15,7 @@ export class CommunityService {
     @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>) {}
 
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
+  async primaryGearbagFor(userId:string){const bags=await this.myGearbags(userId);return bags.find(b=>b.isPrimary)||bags[0]||null}
   createGearbag(userId:string,data:Partial<Gearbag>){return this.gearbags.save(this.gearbags.create({...data,ownerId:userId}))}
   async updateGearbag(userId:string,id:string,data:Partial<Gearbag>){const row=await this.owned(this.gearbags,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearbags.save(row)}
   async removeGearbag(userId:string,id:string){await this.owned(this.gearbags,id,userId);await this.gearbags.delete(id)}

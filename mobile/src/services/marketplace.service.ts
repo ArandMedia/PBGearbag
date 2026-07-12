@@ -113,6 +113,7 @@ export interface ListingFilters {
   acceptsTrades?: boolean;
   shippingAvailable?: boolean;
   localPickup?: boolean;
+  sellerId?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -138,6 +139,7 @@ class MarketplaceService {
       if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
       if (filters.location) params.location = filters.location;
       if (filters.brand) params.brand = filters.brand;
+      if (filters.sellerId) params.sellerId = filters.sellerId;
       if (filters.search) params.search = filters.search;
       if (filters.sort) params.sort = filters.sort;
       if (filters.isNegotiable !== undefined) params.isNegotiable = filters.isNegotiable;

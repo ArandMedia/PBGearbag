@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { User } from "../users/entities/user.entity";
 import {
   SocialComment,
   SocialFollow,
@@ -16,6 +17,7 @@ import { SocialController } from "./social.controller";
       SocialReaction,
       SocialComment,
       SocialFollow,
+      User,
     ]),
   ],
   controllers: [SocialController],

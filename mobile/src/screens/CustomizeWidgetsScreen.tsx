@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,8 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuth } from "../store/AuthContext";
+import { Alert } from "../utils/alert";
+import { billingService, BillingStatus } from "../services/billing.service";
 import {
   ProfileWidget,
   WidgetDefinition,
@@ -33,6 +36,8 @@ export default function CustomizeWidgetsScreen() {
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [upgradeBusy, setUpgradeBusy] = useState(false);
 
   const load = () =>
     Promise.all([widgetsService.catalog(), widgetsService.mine()]).then(
@@ -44,7 +49,35 @@ export default function CustomizeWidgetsScreen() {
 
   useEffect(() => {
     load().finally(() => setLoading(false));
+    billingService.getStatus().then(setBilling).catch(() => {});
   }, []);
+
+  const isPro = !!billing?.isPro;
+
+  const upgrade = async () => {
+    setUpgradeBusy(true);
+    try {
+      const url = await billingService.startCheckout("monthly");
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Couldn't start checkout", "Please try again in a moment.");
+    } finally {
+      setUpgradeBusy(false);
+    }
+  };
+
+  const requirePro = (): boolean => {
+    if (isPro) return true;
+    Alert.alert(
+      "Unlock custom widgets",
+      "Adding profile widgets is a PBG Pro feature — pick from loadout, stats, achievements, social links, and more for $4/mo or $24/yr.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Upgrade", onPress: upgrade },
+      ],
+    );
+    return false;
+  };
 
   const addedKeys = new Set(mine.map((w) => w.widgetKey));
   const tags = relevantTags(user?.playStyle);
@@ -56,6 +89,7 @@ export default function CustomizeWidgetsScreen() {
   );
 
   const add = async (key: string) => {
+    if (!requirePro()) return;
     setBusyKey(key);
     try {
       await widgetsService.add(key);
@@ -114,6 +148,28 @@ export default function CustomizeWidgetsScreen() {
         Attach widgets that fit how you play. Reorder, hide, or remove them
         anytime.
       </Text>
+
+      {!isPro && (
+        <View style={s.upsell}>
+          <View style={s.upsellIcon}>
+            <Ionicons name="star" size={16} color={ORANGE} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.upsellTitle}>Adding widgets is a Pro feature</Text>
+            <Text style={s.upsellText}>
+              Upgrade for $4/mo or $24/yr to add new widgets. Any widgets you
+              already have keep working — reorder, hide, or edit them below.
+            </Text>
+          </View>
+          <Pressable style={s.upsellBtn} onPress={upgrade} disabled={upgradeBusy}>
+            {upgradeBusy ? (
+              <ActivityIndicator size="small" color="#10140D" />
+            ) : (
+              <Text style={s.upsellBtnText}>UPGRADE</Text>
+            )}
+          </Pressable>
+        </View>
+      )}
 
       <Text style={s.sectionTitle}>YOUR WIDGETS ({mine.length})</Text>
       {mine.length === 0 && (
@@ -189,14 +245,14 @@ export default function CustomizeWidgetsScreen() {
         <>
           <Text style={s.sectionTitle}>SUGGESTED FOR YOUR STYLE</Text>
           {suggested.map((c) => (
-            <CatalogRow key={c.key} def={c} busy={busyKey === c.key} onAdd={() => add(c.key)} />
+            <CatalogRow key={c.key} def={c} busy={busyKey === c.key} isPro={isPro} onAdd={() => add(c.key)} />
           ))}
         </>
       )}
 
       <Text style={s.sectionTitle}>ALL WIDGETS</Text>
       {others.map((c) => (
-        <CatalogRow key={c.key} def={c} busy={busyKey === c.key} onAdd={() => add(c.key)} />
+        <CatalogRow key={c.key} def={c} busy={busyKey === c.key} isPro={isPro} onAdd={() => add(c.key)} />
       ))}
       {others.length === 0 && suggested.length === 0 && mine.length === catalog.length && (
         <Text style={s.empty}>You've added every available widget.</Text>
@@ -208,10 +264,12 @@ export default function CustomizeWidgetsScreen() {
 function CatalogRow({
   def,
   busy,
+  isPro,
   onAdd,
 }: {
   def: WidgetDefinition;
   busy: boolean;
+  isPro: boolean;
   onAdd: () => void;
 }) {
   return (
@@ -220,11 +278,17 @@ function CatalogRow({
         <Text style={s.rowLabel}>{def.label}</Text>
         <Text style={s.rowDesc}>{def.description}</Text>
       </View>
-      <Pressable style={s.addBtn} onPress={onAdd} disabled={busy}>
+      <Pressable
+        style={[s.addBtn, !isPro && s.addBtnLocked]}
+        onPress={onAdd}
+        disabled={busy}
+      >
         {busy ? (
           <ActivityIndicator size="small" color="#10140D" />
-        ) : (
+        ) : isPro ? (
           <Text style={s.addBtnText}>ADD</Text>
+        ) : (
+          <Ionicons name="lock-closed" size={13} color={ORANGE} />
         )}
       </Pressable>
     </View>
@@ -377,6 +441,37 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   addBtnText: { color: "#10140D", fontSize: 10, fontWeight: "900" },
+  addBtnLocked: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#5C4B2E" },
+  upsell: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: "#5C4B2E",
+    backgroundColor: "#181410",
+    borderRadius: 13,
+    padding: 16,
+  },
+  upsellIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: "rgba(232,116,59,.14)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  upsellTitle: { color: "#F3F1E8", fontSize: 13, fontWeight: "900" },
+  upsellText: { color: "#9DA9A3", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  upsellBtn: {
+    backgroundColor: ORANGE,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minWidth: 74,
+    alignItems: "center",
+  },
+  upsellBtnText: { color: "#10140D", fontSize: 10, fontWeight: "900" },
   editor: {
     marginTop: 12,
     paddingTop: 12,
