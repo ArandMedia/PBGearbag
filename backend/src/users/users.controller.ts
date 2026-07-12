@@ -33,6 +33,21 @@ import { User } from './entities/user.entity';
 import { Public } from '../auth/decorators/public.decorator';
 import { UploadService } from '../common/services/upload.service';
 
+// Fields safe to show on a public profile — notably excludes email, which
+// has no reason to be visible to anyone but the account owner.
+function toPublicProfile(user: User) {
+  const {
+    id, username, firstName, lastName, displayName, bio, avatarUrl,
+    bannerUrl, country, stateProvince, city, playStyle, skillLevel,
+    homeField, favoritePosition, isVerified, createdAt,
+  } = user;
+  return {
+    id, username, firstName, lastName, displayName, bio, avatarUrl,
+    bannerUrl, country, stateProvince, city, playStyle, skillLevel,
+    homeField, favoritePosition, isVerified, createdAt,
+  };
+}
+
 @ApiTags('users')
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -54,7 +69,7 @@ export class UsersController {
   ) {
     const [users, total] = await this.usersService.findAll(page, limit);
     return {
-      items: users,
+      items: users.map(toPublicProfile),
       total,
       page,
       limit,
@@ -80,7 +95,7 @@ export class UsersController {
       limit,
     );
     return {
-      items: users,
+      items: users.map(toPublicProfile),
       total,
       page,
       limit,
@@ -94,7 +109,8 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Returns user' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async findOne(@Param('id') id: string) {
-    return this.usersService.findById(id);
+    const user = await this.usersService.findById(id);
+    return user ? toPublicProfile(user) : user;
   }
 
   @Put('profile')
