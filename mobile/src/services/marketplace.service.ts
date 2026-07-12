@@ -1,4 +1,5 @@
 import { apiClient } from './api';
+import { toUploadPart } from '../utils/upload';
 
 export enum ListingCategory {
   MARKER = 'marker',
@@ -217,21 +218,12 @@ class MarketplaceService {
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-      formData.append('files', {
-        uri,
-        name: filename,
-        type,
-      } as any);
+      formData.append('files', await toUploadPart(uri, filename, type));
     }
 
     const response = await apiClient.post<{ imageUrls: string[] }>(
       '/marketplace/upload-images',
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      },
     );
 
     return response.data.imageUrls;

@@ -1,4 +1,5 @@
 import { apiClient } from "./api";
+import { toUploadPart } from "../utils/upload";
 export type FeedPost = {
   id: string;
   type: string;
@@ -43,12 +44,8 @@ export const socialService = {
   async upload(uri: string, mimeType?: string) {
     const name = uri.split("/").pop() || "field-media";
     const form = new FormData();
-    form.append("file", { uri, name, type: mimeType || "image/jpeg" } as any);
-    return (
-      await apiClient.post<{ mediaUrl: string }>("/feed/upload", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      })
-    ).data;
+    form.append("file", await toUploadPart(uri, name, mimeType || "image/jpeg"));
+    return (await apiClient.post<{ mediaUrl: string }>("/feed/upload", form)).data;
   },
   async react(id: string, type = "hype") {
     return (await apiClient.post(`/feed/${id}/reactions`, { type })).data;

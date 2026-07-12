@@ -1,5 +1,6 @@
 import { apiClient } from "./api";
 import { tokenStorage } from "./token-storage";
+import { toUploadPart } from "../utils/upload";
 
 export interface User {
   id: string;
@@ -104,17 +105,12 @@ class AuthService {
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : "image/jpeg";
 
-    formData.append("file", {
-      uri: imageUri,
-      name: filename,
-      type,
-    } as any);
+    formData.append("file", await toUploadPart(imageUri, filename, type));
 
-    const response = await apiClient.post("/users/avatar", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    // No explicit Content-Type here — axios/the browser need to generate
+    // the multipart boundary themselves; setting it manually strips that
+    // and the backend can't parse the body at all.
+    const response = await apiClient.post("/users/avatar", formData);
 
     return response.data;
   }
@@ -126,17 +122,9 @@ class AuthService {
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : "image/jpeg";
 
-    formData.append("file", {
-      uri: imageUri,
-      name: filename,
-      type,
-    } as any);
+    formData.append("file", await toUploadPart(imageUri, filename, type));
 
-    const response = await apiClient.post("/users/banner", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await apiClient.post("/users/banner", formData);
 
     return response.data;
   }
