@@ -14,8 +14,18 @@ export class UploadService {
     this.uploadDir = path.join(process.cwd(), 'uploads');
     const endpoint=configService.get<string>('R2_ENDPOINT');
     if(endpoint)this.objectClient=new S3Client({region:'auto',endpoint,credentials:{accessKeyId:configService.getOrThrow('R2_ACCESS_KEY_ID'),secretAccessKey:configService.getOrThrow('R2_SECRET_ACCESS_KEY')}});
-    else if(configService.get('NODE_ENV')==='production')throw new Error('R2 object storage configuration is required in production');
-    else void this.ensureUploadDir();
+    else if(configService.get('NODE_ENV')!=='production')void this.ensureUploadDir();
+    // No throw here even in production without R2 configured — local disk
+    // on Render is ephemeral and would silently lose files on redeploy, so
+    // uploadFile()/deleteFile() refuse to use it in production. But a
+    // missing file store shouldn't crash the entire server; every other
+    // feature (auth, marketplace browsing, billing) works fine without it.
+  }
+
+  private requireObjectStorage(): void {
+    if (!this.objectClient && this.configService.get('NODE_ENV') === 'production') {
+      throw new Error('R2 object storage configuration is required in production');
+    }
   }
 
   private async ensureUploadDir() {
@@ -30,6 +40,7 @@ export class UploadService {
     file: Express.Multer.File,
     folder: string = 'general',
   ): Promise<string> {
+    this.requireObjectStorage();
     const ext=path.extname(file.originalname).toLowerCase();const filename=`${uuidv4()}${ext}`;const key=`${folder}/${filename}`;
     if(this.objectClient){await this.objectClient.send(new PutObjectCommand({Bucket:this.configService.getOrThrow('R2_BUCKET'),Key:key,Body:file.buffer,ContentType:file.mimetype,CacheControl:'public, max-age=31536000, immutable'}));return `${this.configService.getOrThrow('R2_PUBLIC_URL').replace(/\/$/,'')}/${key}`}
     const folderPath = path.join(this.uploadDir, folder);
