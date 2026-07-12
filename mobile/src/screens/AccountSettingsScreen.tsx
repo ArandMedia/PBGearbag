@@ -36,7 +36,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function AccountSettingsScreen() {
+export default function AccountSettingsScreen({ navigation }: any) {
   const { user, logout, refreshUser } = useAuth();
 
   // Change password
@@ -309,6 +309,12 @@ export default function AccountSettingsScreen() {
             </View>
           ))
         )}
+      </Section>
+
+      <Section title="LEGAL">
+        <Pressable style={s.secondaryBtn} onPress={() => navigation.navigate("Legal", { doc: "terms" })}>
+          <Text style={s.secondaryBtnText}>Terms, Privacy Policy, Marketplace Rules & Community Code</Text>
+        </Pressable>
       </Section>
 
       <Section title="DANGER ZONE">

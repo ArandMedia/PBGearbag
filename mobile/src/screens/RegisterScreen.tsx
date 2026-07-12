@@ -142,7 +142,19 @@ export default function RegisterScreen({ navigation }: any) {
             Password must be at least 8 characters with uppercase, lowercase, and number
           </Text>
           <TouchableOpacity style={styles.checkRow} onPress={()=>setAgeConfirmed(!ageConfirmed)}><View style={[styles.check,ageConfirmed&&styles.checkOn]}><Text style={styles.checkMark}>{ageConfirmed?'✓':''}</Text></View><Text style={styles.checkText}>I confirm I meet the minimum account age for my location.</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.checkRow} onPress={()=>setAcceptedTerms(!acceptedTerms)}><View style={[styles.check,acceptedTerms&&styles.checkOn]}><Text style={styles.checkMark}>{acceptedTerms?'✓':''}</Text></View><Text style={styles.checkText}>I accept the Terms, Privacy Policy, Marketplace Rules, and Community Code.</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.checkRow} onPress={()=>setAcceptedTerms(!acceptedTerms)}>
+            <View style={[styles.check,acceptedTerms&&styles.checkOn]}><Text style={styles.checkMark}>{acceptedTerms?'✓':''}</Text></View>
+            <Text style={styles.checkText}>
+              I accept the{' '}
+              <Text style={styles.checkLink} onPress={()=>navigation.navigate('Legal',{doc:'terms'})}>Terms</Text>
+              {', '}
+              <Text style={styles.checkLink} onPress={()=>navigation.navigate('Legal',{doc:'privacy'})}>Privacy Policy</Text>
+              {', '}
+              <Text style={styles.checkLink} onPress={()=>navigation.navigate('Legal',{doc:'marketplace'})}>Marketplace Rules</Text>
+              {', and '}
+              <Text style={styles.checkLink} onPress={()=>navigation.navigate('Legal',{doc:'community'})}>Community Code</Text>.
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -252,5 +264,5 @@ const styles = StyleSheet.create({
     color: '#D39A3A',
     fontWeight: '600',
   },
-  checkRow:{flexDirection:'row',alignItems:'flex-start',gap:10,marginBottom:12},check:{width:22,height:22,borderRadius:6,borderWidth:1,borderColor:'#46515a',alignItems:'center',justifyContent:'center'},checkOn:{backgroundColor:'#A8C84A',borderColor:'#A8C84A'},checkMark:{color:'#10150d',fontWeight:'900'},checkText:{color:'#aab3ba',fontSize:12,lineHeight:18,flex:1},
+  checkRow:{flexDirection:'row',alignItems:'flex-start',gap:10,marginBottom:12},check:{width:22,height:22,borderRadius:6,borderWidth:1,borderColor:'#46515a',alignItems:'center',justifyContent:'center'},checkOn:{backgroundColor:'#A8C84A',borderColor:'#A8C84A'},checkMark:{color:'#10150d',fontWeight:'900'},checkText:{color:'#aab3ba',fontSize:12,lineHeight:18,flex:1},checkLink:{color:'#D39A3A',fontWeight:'700',textDecorationLine:'underline'},
 });

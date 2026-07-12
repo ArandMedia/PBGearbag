@@ -41,6 +41,7 @@ import ReportScreen from "../screens/ReportScreen";
 import AdminScreen from "../screens/AdminScreen";
 import VerifyEmailScreen from "../screens/VerifyEmailScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import LegalScreen from "../screens/LegalScreen";
 import ConfirmEmailChangeScreen from "../screens/ConfirmEmailChangeScreen";
 import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
@@ -202,6 +203,17 @@ function AuthStack() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen
+        name="Legal"
+        component={LegalScreen}
+        options={{
+          headerShown: true,
+          title: "Legal",
+          headerStyle: { backgroundColor: INK },
+          headerTintColor: "#fff",
+          headerShadowVisible: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -300,6 +312,11 @@ function MainStack() {
         name="FollowList"
         component={FollowListScreen}
         options={detailOptions("Connections")}
+      />
+      <Stack.Screen
+        name="Legal"
+        component={LegalScreen}
+        options={detailOptions("Legal")}
       />
       <Stack.Screen
         name="CommunityEntity"

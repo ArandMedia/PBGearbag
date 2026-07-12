@@ -145,6 +145,15 @@ export default function LandingScreen({ navigation }: any) {
         <Text style={s.foot}>
           Built by players. For the whole paintball community.
         </Text>
+        <View style={s.footLinks}>
+          <Text style={s.footLink} onPress={() => navigation.navigate("Legal", { doc: "terms" })}>Terms</Text>
+          <Text style={s.footLinkDot}>·</Text>
+          <Text style={s.footLink} onPress={() => navigation.navigate("Legal", { doc: "privacy" })}>Privacy</Text>
+          <Text style={s.footLinkDot}>·</Text>
+          <Text style={s.footLink} onPress={() => navigation.navigate("Legal", { doc: "marketplace" })}>Marketplace Rules</Text>
+          <Text style={s.footLinkDot}>·</Text>
+          <Text style={s.footLink} onPress={() => navigation.navigate("Legal", { doc: "community" })}>Community Code</Text>
+        </View>
       </ScrollView>
     </ImageBackground>
   );
@@ -327,4 +336,14 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   foot: { color: "#68747B", textAlign: "center", marginTop: 50, fontSize: 13 },
+  footLinks: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 20,
+  },
+  footLink: { color: "#899399", fontSize: 11, fontWeight: "700" },
+  footLinkDot: { color: "#3A4541", fontSize: 11 },
 });

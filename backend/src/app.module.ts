@@ -18,6 +18,7 @@ import { dataSourceOptions } from './config/typeorm.config';
 import { CommunityModule } from './community/community.module';
 import { BillingModule } from './billing/billing.module';
 import { ProfileWidgetsModule } from './profile-widgets/profile-widgets.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ProfileWidgetsModule } from './profile-widgets/profile-widgets.module';
     CommunityModule,
     BillingModule,
     ProfileWidgetsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../users/entities/user.entity";
+import { NotificationsModule } from "../notifications/notifications.module";
 import {
   SocialComment,
   SocialFollow,
@@ -21,6 +22,7 @@ import { SocialController } from "./social.controller";
       UserBlock,
       User,
     ]),
+    NotificationsModule,
   ],
   controllers: [SocialController],
   providers: [SocialService],

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { User } from "../users/entities/user.entity";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   PostType,
   ReactionType,
@@ -23,6 +24,7 @@ export class SocialService {
     @InjectRepository(SocialFollow) private follows: Repository<SocialFollow>,
     @InjectRepository(UserBlock) private blocks: Repository<UserBlock>,
     @InjectRepository(User) private users: Repository<User>,
+    private notifications: NotificationsService,
   ) {}
   async feed(userId: string, page = 1, limit = 20, onlyFollowing = false) {
     const follows = onlyFollowing
@@ -119,8 +121,11 @@ export class SocialService {
     return this.posts.save(this.posts.create({ ...data, authorId }));
   }
   async react(userId: string, postId: string, type: ReactionType) {
-    if (!(await this.posts.exist({ where: { id: postId } })))
-      throw new NotFoundException("Post not found");
+    const post = await this.posts.findOneBy({ id: postId });
+    if (!post) throw new NotFoundException("Post not found");
+    if (post.authorId !== userId && (await this.isBlockedEitherWay(userId, post.authorId))) {
+      throw new ForbiddenException("You can't interact with this post.");
+    }
     const existing = await this.reactions.findOne({
       where: { postId, userId },
     });
@@ -134,7 +139,22 @@ export class SocialService {
       return { active: true, type };
     }
     await this.reactions.save(this.reactions.create({ postId, userId, type }));
+    if (post.authorId !== userId) {
+      const actor = await this.actorName(userId);
+      await this.notifications.create(
+        post.authorId,
+        "reaction",
+        "New reaction",
+        `${actor} reacted to your post`,
+        undefined,
+        { postId, userId },
+      );
+    }
     return { active: true, type };
+  }
+  private async actorName(userId: string) {
+    const actor = await this.users.findOneBy({ id: userId });
+    return actor?.displayName || actor?.username || "Someone";
   }
   commentsFor(postId: string) {
     return this.comments
@@ -154,9 +174,24 @@ export class SocialService {
       .getMany();
   }
   async comment(authorId: string, postId: string, body: string) {
-    if (!(await this.posts.exist({ where: { id: postId } })))
-      throw new NotFoundException("Post not found");
-    return this.comments.save(this.comments.create({ postId, authorId, body }));
+    const post = await this.posts.findOneBy({ id: postId });
+    if (!post) throw new NotFoundException("Post not found");
+    if (post.authorId !== authorId && (await this.isBlockedEitherWay(authorId, post.authorId))) {
+      throw new ForbiddenException("You can't interact with this post.");
+    }
+    const saved = await this.comments.save(this.comments.create({ postId, authorId, body }));
+    if (post.authorId !== authorId) {
+      const actor = await this.actorName(authorId);
+      await this.notifications.create(
+        post.authorId,
+        "comment",
+        "New comment",
+        `${actor} commented on your post`,
+        undefined,
+        { postId, authorId },
+      );
+    }
+    return saved;
   }
   async follow(followerId: string, followingId: string) {
     if (followerId === followingId) return { active: false };
@@ -171,6 +206,15 @@ export class SocialService {
       throw new ForbiddenException("You can't follow this player.");
     }
     await this.follows.save(this.follows.create({ followerId, followingId }));
+    const actor = await this.actorName(followerId);
+    await this.notifications.create(
+      followingId,
+      "follow",
+      "New follower",
+      `${actor} started following you`,
+      undefined,
+      { followerId },
+    );
     return { active: true };
   }
   async isBlockedEitherWay(userA: string, userB: string) {
