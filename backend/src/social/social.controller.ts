@@ -119,4 +119,13 @@ export class SocialController {
   ) {
     return this.social.followingList(id, page);
   }
+  @Post("users/:id/block") block(@CurrentUser() u: User, @Param("id") id: string) {
+    return this.social.block(u.id, id);
+  }
+  @Post("users/:id/unblock") unblock(@CurrentUser() u: User, @Param("id") id: string) {
+    return this.social.unblock(u.id, id);
+  }
+  @Get("blocked") blocked(@CurrentUser() u: User) {
+    return this.social.blockedUsers(u.id);
+  }
 }

@@ -23,6 +23,8 @@ export interface User {
   isVerified: boolean;
   isActive: boolean;
   roles?: string[];
+  pendingEmail?: string;
+  messagePermission?: "everyone" | "following" | "nobody";
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +83,14 @@ class AuthService {
       await apiClient.post("/auth/logout");
     } catch (error) {
       console.error("Logout error:", error);
+    } finally {
+      await this.clearTokens();
+    }
+  }
+
+  async logoutAllDevices(): Promise<void> {
+    try {
+      await apiClient.post("/auth/logout-all");
     } finally {
       await this.clearTokens();
     }
@@ -184,6 +194,21 @@ class AuthService {
   }
   async resetPassword(token: string, password: string): Promise<void> {
     await apiClient.post("/auth/reset-password", { token, password });
+  }
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.post("/auth/change-password", { currentPassword, newPassword });
+  }
+  async changeEmail(password: string, newEmail: string): Promise<{ message: string }> {
+    return (await apiClient.post("/auth/change-email", { password, newEmail })).data;
+  }
+  async confirmEmailChange(token: string): Promise<void> {
+    await apiClient.post("/auth/confirm-email-change", { token });
+  }
+  async updateSettings(data: { messagePermission: string }): Promise<void> {
+    await apiClient.patch("/users/settings", data);
+  }
+  async deleteAccount(password: string): Promise<void> {
+    await apiClient.delete("/users/account", { data: { password } });
   }
 }
 

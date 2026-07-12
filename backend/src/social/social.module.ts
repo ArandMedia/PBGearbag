@@ -6,6 +6,7 @@ import {
   SocialFollow,
   SocialPost,
   SocialReaction,
+  UserBlock,
 } from "./social.entity";
 import { SocialService } from "./social.service";
 import { SocialController } from "./social.controller";
@@ -17,6 +18,7 @@ import { SocialController } from "./social.controller";
       SocialReaction,
       SocialComment,
       SocialFollow,
+      UserBlock,
       User,
     ]),
   ],

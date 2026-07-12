@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { MessagePermission, User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -18,6 +18,11 @@ export class UsersService {
 
   async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
+  }
+
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return this.usersRepository.createQueryBuilder('user').addSelect('user.password')
+      .where('user.id = :id', { id }).getOne();
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -89,6 +94,9 @@ export class UsersService {
     await this.usersRepository.update(id, { stripeCustomerId });
   }
   async updatePassword(id:string,password:string):Promise<void>{await this.usersRepository.createQueryBuilder().update(User).set({password}).where('id = :id',{id}).execute()}
+  async setPendingEmail(id:string,pendingEmail:string):Promise<void>{await this.usersRepository.update(id,{pendingEmail})}
+  async updateMessagePermission(id:string,messagePermission:MessagePermission):Promise<void>{await this.usersRepository.update(id,{messagePermission})}
+  async applyPendingEmailChange(id:string,email:string):Promise<void>{await this.usersRepository.update(id,{email,pendingEmail:null as any})}
 
   async remove(id: string): Promise<void> {
     await this.usersRepository.delete(id);

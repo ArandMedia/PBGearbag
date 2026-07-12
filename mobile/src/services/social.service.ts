@@ -87,4 +87,13 @@ export const socialService = {
   async myFollowing() {
     return (await apiClient.get<{ followingId: string }[]>("/feed/following")).data;
   },
+  async block(userId: string) {
+    return (await apiClient.post<{ active: boolean }>(`/feed/users/${userId}/block`)).data;
+  },
+  async unblock(userId: string) {
+    return (await apiClient.post<{ active: boolean }>(`/feed/users/${userId}/unblock`)).data;
+  },
+  async blockedUsers() {
+    return (await apiClient.get<SocialProfileSummary[]>("/feed/blocked")).data;
+  },
 };

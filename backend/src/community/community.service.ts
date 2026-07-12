@@ -2,17 +2,20 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
+import { MessagePermission, User } from '../users/entities/user.entity';
+import { SocialService } from '../social/social.service';
 import { ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
 
 @Injectable()
 export class CommunityService {
-  constructor(private readonly db:DataSource,
+  constructor(private readonly db:DataSource, private readonly social:SocialService,
     @InjectRepository(Gearbag) private gearbags:Repository<Gearbag>, @InjectRepository(GearItem) private gearItems:Repository<GearItem>,
     @InjectRepository(Team) private teams:Repository<Team>, @InjectRepository(TeamMember) private teamMembers:Repository<TeamMember>, @InjectRepository(TeamApplication) private applications:Repository<TeamApplication>,
     @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(CommunityEvent) private events:Repository<CommunityEvent>, @InjectRepository(EventRsvp) private rsvps:Repository<EventRsvp>,
     @InjectRepository(Conversation) private conversations:Repository<Conversation>, @InjectRepository(ConversationParticipant) private participants:Repository<ConversationParticipant>, @InjectRepository(Message) private messages:Repository<Message>,
     @InjectRepository(Listing) private listings:Repository<Listing>, @InjectRepository(ListingFavorite) private favorites:Repository<ListingFavorite>, @InjectRepository(ListingOffer) private offers:Repository<ListingOffer>,
-    @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>) {}
+    @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>,
+    @InjectRepository(User) private users:Repository<User>) {}
 
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
   async primaryGearbagFor(userId:string){const bags=await this.myGearbags(userId);return bags.find(b=>b.isPrimary)||bags[0]||null}
@@ -45,7 +48,17 @@ export class CommunityService {
   async myUpcomingEvents(userId:string,limit=5){const going=await this.rsvps.find({where:{userId,status:RsvpStatus.GOING}});if(!going.length)return [];return this.events.find({where:{id:In(going.map(x=>x.eventId)),status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:limit})}
 
   async listConversations(userId:string){const memberships=await this.participants.find({where:{userId,leftAt:IsNull()}});if(!memberships.length)return [];return this.conversations.find({where:{id:In(memberships.map(x=>x.conversationId))},order:{lastMessageAt:'DESC',createdAt:'DESC'}})}
-  async createConversation(userId:string,type:any,participantIds:string[],subject?:string,contextId?:string){const ids=[...new Set([userId,...participantIds])];if(ids.length<2)throw new BadRequestException('A conversation needs another participant');return this.db.transaction(async manager=>{const c=await manager.getRepository(Conversation).save({type,subject,contextId,createdById:userId});await manager.getRepository(ConversationParticipant).save(ids.map(id=>({conversationId:c.id,userId:id})));return c})}
+  async createConversation(userId:string,type:any,participantIds:string[],subject?:string,contextId?:string){const ids=[...new Set([userId,...participantIds])];if(ids.length<2)throw new BadRequestException('A conversation needs another participant');
+    if(ids.length===2){
+      const otherId=ids.find(id=>id!==userId)!;
+      if(await this.social.isBlockedEitherWay(userId,otherId))throw new ForbiddenException("You can't message this player.");
+      const other=await this.users.findOneBy({id:otherId});
+      if(other?.messagePermission===MessagePermission.NOBODY)throw new ForbiddenException('This player is not accepting messages.');
+      if(other?.messagePermission===MessagePermission.FOLLOWING&&!(await this.social.isFollowing(otherId,userId))){
+        throw new ForbiddenException('This player only accepts messages from people they follow.');
+      }
+    }
+    return this.db.transaction(async manager=>{const c=await manager.getRepository(Conversation).save({type,subject,contextId,createdById:userId});await manager.getRepository(ConversationParticipant).save(ids.map(id=>({conversationId:c.id,userId:id})));return c})}
   async conversationMessages(userId:string,conversationId:string){await this.requireParticipant(userId,conversationId);await this.participants.update({conversationId,userId},{lastReadAt:new Date()});return this.messages.find({where:{conversationId,deletedAt:IsNull()},order:{createdAt:'ASC'},take:100})}
   async sendMessage(userId:string,conversationId:string,body:string,attachments?:string[]){await this.requireParticipant(userId,conversationId);const message=await this.messages.save(this.messages.create({conversationId,senderId:userId,body,attachments}));await this.conversations.update(conversationId,{lastMessageAt:message.createdAt});return message}
 

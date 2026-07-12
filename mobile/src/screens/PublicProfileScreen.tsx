@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Alert } from "../utils/alert";
 import { useAuth } from "../store/AuthContext";
 import { authService, User } from "../services/auth.service";
 import {
@@ -40,6 +41,9 @@ export default function PublicProfileScreen({ route, navigation }: any) {
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [bag, setBag] = useState<Gearbag | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [blocked, setBlocked] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!uId) return;
@@ -61,8 +65,46 @@ export default function PublicProfileScreen({ route, navigation }: any) {
         .myFollowing()
         .then((rows) => setFollowing(rows.some((r) => r.followingId === uId)))
         .catch(() => {});
+      socialService
+        .blockedUsers()
+        .then((rows) => setBlocked(rows.some((r) => r.id === uId)))
+        .catch(() => {});
     }
   }, [uId, viewer?.id]);
+
+  const toggleBlock = () => {
+    if (blocked) {
+      setBlockBusy(true);
+      socialService
+        .unblock(uId)
+        .then(() => setBlocked(false))
+        .catch(() => Alert.alert("Couldn't unblock", "Please try again in a moment."))
+        .finally(() => setBlockBusy(false));
+      return;
+    }
+    Alert.alert(
+      `Block ${name}?`,
+      "They won't be able to follow or message you, and you'll stop following each other.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: () => {
+            setBlockBusy(true);
+            socialService
+              .block(uId)
+              .then(() => {
+                setBlocked(true);
+                setFollowing(false);
+              })
+              .catch(() => Alert.alert("Couldn't block", "Please try again in a moment."))
+              .finally(() => setBlockBusy(false));
+          },
+        },
+      ],
+    );
+  };
 
   const toggleFollow = async () => {
     if (!viewer) {
@@ -220,7 +262,44 @@ export default function PublicProfileScreen({ route, navigation }: any) {
         >
           <Text style={s.shareText}>SHARE PROFILE</Text>
         </Pressable>
+        {!isSelf && (
+          <Pressable style={s.moreBtn} onPress={() => setMenuOpen((v) => !v)}>
+            <Ionicons name="ellipsis-horizontal" size={16} color="#D3DAD5" />
+          </Pressable>
+        )}
       </View>
+
+      {menuOpen && !isSelf && (
+        <View style={s.menu}>
+          <Pressable
+            style={s.menuRow}
+            onPress={() => {
+              setMenuOpen(false);
+              navigation.navigate("Report", {
+                subjectId: uId,
+                subjectType: "user",
+                title: name,
+              });
+            }}
+          >
+            <Ionicons name="flag-outline" size={16} color="#D3DAD5" />
+            <Text style={s.menuText}>Report {name}</Text>
+          </Pressable>
+          <Pressable
+            style={s.menuRow}
+            onPress={() => {
+              setMenuOpen(false);
+              toggleBlock();
+            }}
+            disabled={blockBusy}
+          >
+            <Ionicons name={blocked ? "lock-open-outline" : "ban-outline"} size={16} color="#E8743B" />
+            <Text style={[s.menuText, { color: "#E8743B" }]}>
+              {blocked ? `Unblock ${name}` : `Block ${name}`}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={s.card}>
         <Text style={s.eyebrow}>PLAYER DETAILS</Text>
@@ -426,6 +505,34 @@ const s = StyleSheet.create({
     paddingVertical: 11,
   },
   shareText: { color: "#D3DAD5", fontWeight: "900", fontSize: 10 },
+  moreBtn: {
+    borderWidth: 1,
+    borderColor: "#3A4541",
+    borderRadius: 9,
+    width: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menu: {
+    alignSelf: "center",
+    marginTop: 10,
+    width: 220,
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: "#293231",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#232C2A",
+  },
+  menuText: { color: "#D3DAD5", fontSize: 12, fontWeight: "700" },
   card: {
     marginTop: 25,
     backgroundColor: PANEL,

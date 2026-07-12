@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { User } from "../users/entities/user.entity";
@@ -9,6 +9,7 @@ import {
   SocialFollow,
   SocialPost,
   SocialReaction,
+  UserBlock,
 } from "./social.entity";
 
 @Injectable()
@@ -20,6 +21,7 @@ export class SocialService {
     @InjectRepository(SocialComment)
     private comments: Repository<SocialComment>,
     @InjectRepository(SocialFollow) private follows: Repository<SocialFollow>,
+    @InjectRepository(UserBlock) private blocks: Repository<UserBlock>,
     @InjectRepository(User) private users: Repository<User>,
   ) {}
   async feed(userId: string, page = 1, limit = 20, onlyFollowing = false) {
@@ -165,8 +167,43 @@ export class SocialService {
       await this.follows.remove(existing);
       return { active: false };
     }
+    if (await this.isBlockedEitherWay(followerId, followingId)) {
+      throw new ForbiddenException("You can't follow this player.");
+    }
     await this.follows.save(this.follows.create({ followerId, followingId }));
     return { active: true };
+  }
+  async isBlockedEitherWay(userA: string, userB: string) {
+    const count = await this.blocks
+      .createQueryBuilder("b")
+      .where(
+        "(b.blockerId = :userA AND b.blockedId = :userB) OR (b.blockerId = :userB AND b.blockedId = :userA)",
+        { userA, userB },
+      )
+      .getCount();
+    return count > 0;
+  }
+  async isFollowing(followerId: string, followingId: string) {
+    return (await this.follows.count({ where: { followerId, followingId } })) > 0;
+  }
+  async block(blockerId: string, blockedId: string) {
+    if (blockerId === blockedId) {
+      throw new BadRequestException("You can't block yourself.");
+    }
+    const existing = await this.blocks.findOne({ where: { blockerId, blockedId } });
+    if (existing) return { active: true };
+    await this.blocks.save(this.blocks.create({ blockerId, blockedId }));
+    await this.follows.delete({ followerId: blockerId, followingId: blockedId });
+    await this.follows.delete({ followerId: blockedId, followingId: blockerId });
+    return { active: true };
+  }
+  async unblock(blockerId: string, blockedId: string) {
+    await this.blocks.delete({ blockerId, blockedId });
+    return { active: false };
+  }
+  async blockedUsers(blockerId: string) {
+    const rows = await this.blocks.find({ where: { blockerId }, order: { createdAt: "DESC" } });
+    return this.hydrate(rows.map((r) => r.blockedId));
   }
   following(userId: string) {
     return this.follows.find({

@@ -25,7 +25,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { User } from '../users/entities/user.entity';
 import { Request } from 'express';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { EmailDto, ResetPasswordDto, TokenDto } from './dto/account-lifecycle.dto';
+import { ChangeEmailDto, ChangePasswordDto, EmailDto, ResetPasswordDto, TokenDto } from './dto/account-lifecycle.dto';
 
 type AuthenticatedUser = User & { sessionId: string };
 
@@ -87,6 +87,10 @@ export class AuthController {
   @Post('resend-verification') @Public() async resendVerification(@Body()dto:EmailDto){return this.authService.resendVerification(dto.email)}
   @Post('forgot-password') @Public() async forgotPassword(@Body()dto:EmailDto){return this.authService.forgotPassword(dto.email)}
   @Post('reset-password') @Public() async resetPassword(@Body()dto:ResetPasswordDto){return this.authService.resetPassword(dto.token,dto.password)}
+
+  @Post('change-password') @ApiBearerAuth() async changePassword(@CurrentUser()user:User,@Body()dto:ChangePasswordDto){return this.authService.changePassword(user.id,dto.currentPassword,dto.newPassword)}
+  @Post('change-email') @ApiBearerAuth() async changeEmail(@CurrentUser()user:User,@Body()dto:ChangeEmailDto){return this.authService.changeEmail(user.id,dto.password,dto.newEmail)}
+  @Post('confirm-email-change') @Public() async confirmEmailChange(@Body()dto:TokenDto){return this.authService.confirmEmailChange(dto.token)}
 
   @Get('sessions')
   @ApiBearerAuth()

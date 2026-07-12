@@ -69,3 +69,12 @@ export class SocialFollow {
   @Index() @Column({ name: "following_id", type: "uuid" }) followingId: string;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
 }
+
+@Entity("user_blocks")
+@Index(["blockerId", "blockedId"], { unique: true })
+export class UserBlock {
+  @PrimaryGeneratedColumn("uuid") id: string;
+  @Index() @Column({ name: "blocker_id", type: "uuid" }) blockerId: string;
+  @Index() @Column({ name: "blocked_id", type: "uuid" }) blockedId: string;
+  @CreateDateColumn({ name: "created_at" }) createdAt: Date;
+}

@@ -34,6 +34,12 @@ export enum UserRole {
   ADMIN = "admin",
 }
 
+export enum MessagePermission {
+  EVERYONE = "everyone",
+  FOLLOWING = "following",
+  NOBODY = "nobody",
+}
+
 @Entity("users")
 export class User {
   @PrimaryGeneratedColumn("uuid")
@@ -41,6 +47,9 @@ export class User {
 
   @Column({ unique: true })
   email: string;
+
+  @Column({ name: "pending_email", nullable: true })
+  pendingEmail?: string;
 
   @Column({ unique: true })
   username: string;
@@ -110,6 +119,12 @@ export class User {
 
   @Column("simple-array", { default: UserRole.USER })
   roles: UserRole[];
+
+  @Column({
+    name: "message_permission",
+    default: MessagePermission.EVERYONE,
+  })
+  messagePermission: MessagePermission;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

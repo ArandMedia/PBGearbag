@@ -23,6 +23,7 @@ import LandingScreen from "../screens/LandingScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
+import AccountSettingsScreen from "../screens/AccountSettingsScreen";
 import MarketplaceFeedScreen from "../screens/MarketplaceFeedScreen";
 import ListingDetailScreen from "../screens/ListingDetailScreen";
 import CreateListingScreen from "../screens/CreateListingScreen";
@@ -40,6 +41,7 @@ import ReportScreen from "../screens/ReportScreen";
 import AdminScreen from "../screens/AdminScreen";
 import VerifyEmailScreen from "../screens/VerifyEmailScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import ConfirmEmailChangeScreen from "../screens/ConfirmEmailChangeScreen";
 import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
 import FollowListScreen from "../screens/FollowListScreen";
@@ -265,6 +267,11 @@ function MainStack() {
         options={detailOptions("Edit Profile")}
       />
       <Stack.Screen
+        name="AccountSettings"
+        component={AccountSettingsScreen}
+        options={detailOptions("Account Settings")}
+      />
+      <Stack.Screen
         name="CustomizeWidgets"
         component={CustomizeWidgetsScreen}
         options={detailOptions("Customize Profile")}
@@ -324,6 +331,7 @@ export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
   const verifyToken = getUrlToken("/verify-email");
   const resetToken = getUrlToken("/reset-password");
+  const emailChangeToken = getUrlToken("/confirm-email-change");
   if (loading)
     return (
       <View style={styles.loading}>
@@ -331,11 +339,15 @@ export default function AppNavigator() {
         <ActivityIndicator size="large" color={LIME} />
       </View>
     );
-  // Email links (verify, reset) can be opened without an active session —
-  // e.g. on a different device than the one used to register — so both
-  // have to work standalone rather than only inside the app shell.
+  // Email links (verify, reset, confirm-change) can be opened without an
+  // active session — e.g. on a different device than the one used to
+  // register — so all of these have to work standalone rather than only
+  // inside the app shell.
   if (resetToken) {
     return <ForgotPasswordScreen initialToken={resetToken} />;
+  }
+  if (emailChangeToken) {
+    return <ConfirmEmailChangeScreen token={emailChangeToken} />;
   }
   if (verifyToken && !isAuthenticated) {
     return <VerifyEmailScreen initialToken={verifyToken} />;

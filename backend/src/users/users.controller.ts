@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -14,7 +15,9 @@ import {
   Post,
   UploadedFile,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -27,6 +30,7 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { DeleteAccountDto, UpdateAccountSettingsDto } from './dto/account-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from './entities/user.entity';
@@ -125,12 +129,28 @@ export class UsersController {
     return this.usersService.update(user.id, updateUserDto);
   }
 
+  @Patch('settings')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update account settings (privacy, etc.)' })
+  async updateSettings(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateAccountSettingsDto,
+  ) {
+    await this.usersService.updateMessagePermission(user.id, dto.messagePermission);
+    return { message: 'Settings updated' };
+  }
+
   @Delete('account')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete current user account' })
   @ApiResponse({ status: 200, description: 'Account deleted successfully' })
-  async deleteAccount(@CurrentUser() user: User) {
+  async deleteAccount(@CurrentUser() user: User, @Body() dto: DeleteAccountDto) {
+    const withPassword = await this.usersService.findByIdWithPassword(user.id);
+    if (!withPassword || !(await bcrypt.compare(dto.password, withPassword.password))) {
+      throw new UnauthorizedException('Password is incorrect');
+    }
     await this.usersService.remove(user.id);
     return { message: 'Account deleted successfully' };
   }

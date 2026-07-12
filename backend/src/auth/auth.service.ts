@@ -98,6 +98,31 @@ export class AuthService {
   async forgotPassword(email:string){const user=await this.usersService.findByEmail(email);if(user){const token=await this.issueToken(user,AuthTokenType.RESET,60);await this.deliverToken(email,token,AuthTokenType.RESET);if(this.configService.get('NODE_ENV')!=='production')return{message:'Reset instructions sent',resetToken:token}}return{message:'If the account exists, reset instructions were sent'}}
   async resetPassword(token:string,password:string){const row=await this.consumeToken(token,AuthTokenType.RESET);await this.usersService.updatePassword(row.userId,await bcrypt.hash(password,12));await this.logoutAll(row.userId);return{message:'Password reset successfully'}}
 
+  async changePassword(userId:string,currentPassword:string,newPassword:string){
+    const user=await this.usersService.findByIdWithPassword(userId);
+    if(!user||!(await bcrypt.compare(currentPassword,user.password)))throw new UnauthorizedException('Current password is incorrect');
+    await this.usersService.updatePassword(userId,await bcrypt.hash(newPassword,12));
+    return{message:'Password changed successfully'};
+  }
+  async changeEmail(userId:string,password:string,newEmail:string){
+    const user=await this.usersService.findByIdWithPassword(userId);
+    if(!user||!(await bcrypt.compare(password,user.password)))throw new UnauthorizedException('Password is incorrect');
+    const normalized=newEmail.toLowerCase();
+    if(normalized===user.email)throw new ConflictException('That is already your email address');
+    if(await this.usersService.findByEmail(normalized))throw new ConflictException('Email already in use');
+    await this.usersService.setPendingEmail(userId,normalized);
+    const token=await this.issueToken(user,AuthTokenType.EMAIL_CHANGE,60);
+    await this.deliverToken(normalized,token,AuthTokenType.EMAIL_CHANGE);
+    return{message:'Confirmation link sent to your new email address'};
+  }
+  async confirmEmailChange(token:string){
+    const row=await this.consumeToken(token,AuthTokenType.EMAIL_CHANGE);
+    const user=await this.usersService.findById(row.userId);
+    if(!user?.pendingEmail)throw new UnauthorizedException('No pending email change found');
+    await this.usersService.applyPendingEmailChange(row.userId,user.pendingEmail);
+    return{message:'Email address updated'};
+  }
+
   private async startSession(user: User, context: SessionContext): Promise<AuthResponse> {
     const session = await this.sessions.save(this.sessions.create({
       userId: user.id, tokenHash: 'pending', familyId: randomUUID(),
@@ -142,8 +167,8 @@ export class AuthService {
   // SMTP stays as a fallback for hosts that don't block it.
   private async deliverToken(email:string,token:string,type:AuthTokenType){
     const base=this.configService.get('FRONTEND_URL')||'http://localhost:8081';
-    const path=type===AuthTokenType.VERIFY?'verify-email':'reset-password';
-    const subject=type===AuthTokenType.VERIFY?'Verify your PBGearbag account':'Reset your PBGearbag password';
+    const path=type===AuthTokenType.VERIFY?'verify-email':type===AuthTokenType.EMAIL_CHANGE?'confirm-email-change':'reset-password';
+    const subject=type===AuthTokenType.VERIFY?'Verify your PBGearbag account':type===AuthTokenType.EMAIL_CHANGE?'Confirm your new PBGearbag email':'Reset your PBGearbag password';
     const text=`Open ${base}/${path}?token=${token}`;
     const from=this.configService.get('EMAIL_FROM')||'PBGearbag <noreply@arandmedia.com>';
 

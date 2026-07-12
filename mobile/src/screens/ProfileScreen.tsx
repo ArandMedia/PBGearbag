@@ -679,9 +679,9 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
           <View style={s.account}>
             <Pressable
-              onPress={() => navigation.getParent()?.navigate("EditProfile")}
+              onPress={() => navigation.getParent()?.navigate("AccountSettings")}
             >
-              <Text style={s.accountLink}>Account and profile settings</Text>
+              <Text style={s.accountLink}>Account settings</Text>
             </Pressable>
             <Pressable onPress={confirmLogout}>
               <Text style={s.logout}>Sign out</Text>
