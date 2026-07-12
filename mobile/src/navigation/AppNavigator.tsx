@@ -308,15 +308,16 @@ const navTheme = {
     text: "#F5F7F8",
   },
 };
-function getUrlVerifyToken(): string | undefined {
+function getUrlToken(path: string): string | undefined {
   if (Platform.OS !== "web" || typeof window === "undefined") return undefined;
-  if (window.location.pathname !== "/verify-email") return undefined;
+  if (window.location.pathname !== path) return undefined;
   return new URLSearchParams(window.location.search).get("token") || undefined;
 }
 
 export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
-  const urlToken = getUrlVerifyToken();
+  const verifyToken = getUrlToken("/verify-email");
+  const resetToken = getUrlToken("/reset-password");
   if (loading)
     return (
       <View style={styles.loading}>
@@ -324,11 +325,14 @@ export default function AppNavigator() {
         <ActivityIndicator size="large" color={LIME} />
       </View>
     );
-  // A verification link can be opened without an active session (e.g. on a
-  // different device than the one used to register), so this has to work
-  // standalone rather than only inside the authenticated app shell.
-  if (urlToken && !isAuthenticated) {
-    return <VerifyEmailScreen initialToken={urlToken} />;
+  // Email links (verify, reset) can be opened without an active session —
+  // e.g. on a different device than the one used to register — so both
+  // have to work standalone rather than only inside the app shell.
+  if (resetToken) {
+    return <ForgotPasswordScreen initialToken={resetToken} />;
+  }
+  if (verifyToken && !isAuthenticated) {
+    return <VerifyEmailScreen initialToken={verifyToken} />;
   }
   return (
     <NavigationContainer theme={navTheme}>
@@ -336,7 +340,7 @@ export default function AppNavigator() {
         user?.isVerified ? (
           <MainStack />
         ) : (
-          <VerifyEmailScreen initialToken={urlToken} />
+          <VerifyEmailScreen initialToken={verifyToken} />
         )
       ) : (
         <AuthStack />
