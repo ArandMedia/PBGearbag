@@ -27,9 +27,13 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
   {
     key: 'stats',
     label: 'Stats Card',
-    description: 'Custom stats you want to show off — K/D, hit %, whatever matters in your format.',
+    description: 'K/D, hit %, whatever matters in your format — enter it yourself or link out to wherever you already track it (a league site, PBLive, a scoreboard app).',
     tags: ['speedball', 'tournament', 'universal'],
-    configFields: [{ key: 'stats', label: 'Stats', type: 'list' }],
+    configFields: [
+      { key: 'platform', label: 'Tracked on (e.g. PSP, NXL, Millennium, a local league)', type: 'text' },
+      { key: 'profileUrl', label: 'Link to your stats/profile there', type: 'url' },
+      { key: 'stats', label: 'Stats (shown alongside or instead of the link)', type: 'list' },
+    ],
   },
   {
     key: 'team',

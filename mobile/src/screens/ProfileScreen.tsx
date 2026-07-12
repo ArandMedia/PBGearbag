@@ -21,6 +21,7 @@ import { billingService, BillingStatus } from "../services/billing.service";
 import { ProfileWidget, widgetsService } from "../services/widgets.service";
 import { RelationshipCounts, socialService } from "../services/social.service";
 import { WidgetRenderer } from "../components/WidgetCards";
+import { computeAutoAchievements } from "../utils/achievements";
 
 const TURF = "#A8C84A",
   INK = "#0A0E0F",
@@ -221,6 +222,19 @@ export default function ProfileScreen({ navigation }: any) {
     ];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
   }, [user]);
+  const achievementsWidget = widgets.find((w) => w.widgetKey === "achievements");
+  const achievementCount = useMemo(() => {
+    const auto = computeAutoAchievements({
+      user,
+      bag,
+      team,
+      upcomingEvents,
+      listings,
+      isPro: billing?.isPro,
+    });
+    const custom = achievementsWidget?.config?.items || [];
+    return auto.length + custom.length;
+  }, [user, bag, team, upcomingEvents, listings, billing, achievementsWidget]);
   if (!user)
     return (
       <View style={s.center}>
@@ -390,6 +404,13 @@ export default function ProfileScreen({ navigation }: any) {
           label="PROFILE READY"
           onPress={() => navigation.getParent()?.navigate("EditProfile")}
         />
+        {achievementsWidget && (
+          <Stat
+            value={achievementCount}
+            label="ACHIEVEMENTS"
+            onPress={openCustomizeWidgets}
+          />
+        )}
       </View>
 
       <View style={[s.columns, compact && { flexDirection: "column" }]}>
@@ -714,7 +735,7 @@ export default function ProfileScreen({ navigation }: any) {
               <View key={w.id} style={s.widgetSlot}>
                 <WidgetRenderer
                   widget={w}
-                  ctx={{ user, bag, team, upcomingEvents, listings }}
+                  ctx={{ user, bag, team, upcomingEvents, listings, isPro: billing?.isPro }}
                 />
               </View>
             ))}

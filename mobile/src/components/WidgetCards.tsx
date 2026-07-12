@@ -1,9 +1,10 @@
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Gearbag } from "../services/community.service";
 import { Listing } from "../services/marketplace.service";
 import { ProfileWidget } from "../services/widgets.service";
+import { computeAutoAchievements } from "../utils/achievements";
 
 const TURF = "#A8C84A",
   PANEL = "#121819",
@@ -12,6 +13,12 @@ const TURF = "#A8C84A",
 // Data every widget card might need, gathered once by the parent screen.
 export interface WidgetContext {
   user?: {
+    isVerified?: boolean;
+    avatarUrl?: string;
+    bannerUrl?: string;
+    displayName?: string;
+    bio?: string;
+    city?: string;
     playStyle?: string[];
     homeField?: string;
     favoritePosition?: string;
@@ -21,6 +28,7 @@ export interface WidgetContext {
   team?: { name: string; teamType: string; role: string; city?: string } | null;
   upcomingEvents?: { id: string; title: string; startsAt: string; city?: string }[];
   listings?: Listing[];
+  isPro?: boolean;
 }
 
 function Card({
@@ -77,8 +85,17 @@ function WoodsballKitCard({ ctx }: { ctx: WidgetContext }) {
 
 function StatsCard({ widget }: { widget: ProfileWidget }) {
   const stats: { primary: string; secondary: string }[] = widget.config?.items || [];
+  const platform: string = widget.config?.platform || "";
+  const profileUrl: string = widget.config?.profileUrl || "";
   return (
     <Card eyebrow="STATS">
+      {profileUrl ? (
+        <Pressable style={s.platformLink} onPress={() => Linking.openURL(profileUrl)}>
+          <Text style={s.platformLinkText} numberOfLines={1}>
+            View live stats{platform ? ` on ${platform}` : ""} →
+          </Text>
+        </Pressable>
+      ) : null}
       {stats.length ? (
         stats.map((x, i) => (
           <View key={i} style={s.row}>
@@ -86,9 +103,9 @@ function StatsCard({ widget }: { widget: ProfileWidget }) {
             <Text style={s.rowValue}>{x.secondary}</Text>
           </View>
         ))
-      ) : (
+      ) : !profileUrl ? (
         <Empty text="No stats added yet." />
-      )}
+      ) : null}
     </Card>
   );
 }
@@ -138,19 +155,24 @@ function HomeFieldCard({ ctx }: { ctx: WidgetContext }) {
   );
 }
 
-function AchievementsCard({ widget }: { widget: ProfileWidget }) {
-  const items: { primary: string; secondary?: string }[] = widget.config?.items || [];
+function AchievementsCard({ widget, ctx }: { widget: ProfileWidget; ctx: WidgetContext }) {
+  const custom: { primary: string; secondary?: string }[] = widget.config?.items || [];
+  const auto = computeAutoAchievements(ctx);
+  const items = [...auto, ...custom];
   return (
     <Card eyebrow="ACHIEVEMENTS">
       {items.length ? (
         items.map((x, i) => (
           <View key={i} style={s.row}>
             <Ionicons name="ribbon-outline" size={14} color={ORANGE} />
-            <Text style={[s.rowLabel, { flex: 1, marginLeft: 8 }]}>{x.primary}</Text>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={s.rowLabel}>{x.primary}</Text>
+              {x.secondary ? <Text style={s.achievementSub}>{x.secondary}</Text> : null}
+            </View>
           </View>
         ))
       ) : (
-        <Empty text="No achievements added yet." />
+        <Empty text="No achievements yet — they'll appear automatically as you use PBGearbag." />
       )}
     </Card>
   );
@@ -223,7 +245,7 @@ const RENDERERS: Record<
   team: ({ ctx }) => <TeamCard ctx={ctx} />,
   upcoming_events: ({ ctx }) => <UpcomingEventsCard ctx={ctx} />,
   home_field: ({ ctx }) => <HomeFieldCard ctx={ctx} />,
-  achievements: ({ widget }) => <AchievementsCard widget={widget} />,
+  achievements: ({ widget, ctx }) => <AchievementsCard widget={widget} ctx={ctx} />,
   social_links: ({ widget }) => <SocialLinksCard widget={widget} />,
   bio_spotlight: ({ widget }) => <BioSpotlightCard widget={widget} />,
   marketplace_picks: ({ ctx }) => <MarketplacePicksCard ctx={ctx} />,
@@ -268,6 +290,18 @@ const s = StyleSheet.create({
   },
   rowLabel: { color: "#D6DDDA", fontSize: 12, fontWeight: "700" },
   rowValue: { color: TURF, fontSize: 11, fontWeight: "900" },
+  achievementSub: { color: "#687470", fontSize: 10, marginTop: 2 },
+  platformLink: {
+    backgroundColor: "rgba(168,200,74,.1)",
+    borderWidth: 1,
+    borderColor: "rgba(168,200,74,.3)",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  platformLinkText: { color: TURF, fontSize: 11, fontWeight: "900" },
   link: { color: TURF, fontSize: 11, maxWidth: 160 },
   marketRow: {
     flexDirection: "row",
