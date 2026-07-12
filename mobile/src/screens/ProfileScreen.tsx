@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   ImageBackground,
+  Linking,
   Pressable,
   ScrollView,
   Share,
@@ -16,6 +17,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuth } from "../store/AuthContext";
 import { communityService, Gearbag } from "../services/community.service";
 import { Listing, marketplaceService } from "../services/marketplace.service";
+import { billingService, BillingStatus } from "../services/billing.service";
 
 const TURF = "#A8C84A",
   INK = "#0A0E0F",
@@ -134,6 +136,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [conversationCount, setConversationCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [billingBusy, setBillingBusy] = useState<"monthly" | "yearly" | "manage" | null>(null);
   useEffect(() => {
     Promise.all([
       communityService.gearbags(),
@@ -147,7 +151,33 @@ export default function ProfileScreen({ navigation }: any) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    billingService
+      .getStatus()
+      .then(setBilling)
+      .catch(() => {});
   }, []);
+  const upgrade = async (plan: "monthly" | "yearly") => {
+    setBillingBusy(plan);
+    try {
+      const url = await billingService.startCheckout(plan);
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Couldn't start checkout", "Please try again in a moment.");
+    } finally {
+      setBillingBusy(null);
+    }
+  };
+  const manageBilling = async () => {
+    setBillingBusy("manage");
+    try {
+      const url = await billingService.openPortal();
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Couldn't open billing portal", "Please try again in a moment.");
+    } finally {
+      setBillingBusy(null);
+    }
+  };
   const displayName = user?.displayName || user?.username || "Player";
   const location = [user?.city, user?.stateProvince, user?.country]
     .filter(Boolean)
@@ -454,6 +484,55 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         <View style={s.sideColumn}>
+          <View style={[s.sideCard, billing?.isPro && s.proCard]}>
+            {billing?.isPro ? (
+              <>
+                <View style={s.proHeader}>
+                  <Ionicons name="star" size={16} color={ORANGE} />
+                  <Text style={s.proEyebrow}>PBG PRO</Text>
+                </View>
+                <Text style={s.proBody}>
+                  {billing.cancelAtPeriodEnd
+                    ? `Your Pro membership ends ${billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString() : "soon"}.`
+                    : `Renews ${billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString() : "automatically"}.`}
+                </Text>
+                <Pressable onPress={manageBilling} disabled={billingBusy === "manage"}>
+                  {billingBusy === "manage" ? (
+                    <ActivityIndicator color={ORANGE} style={{ marginTop: 10 }} />
+                  ) : (
+                    <Text style={s.proManageLink}>Manage billing</Text>
+                  )}
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={s.eyebrow}>PBG PRO</Text>
+                <Text style={s.proTitle}>Upgrade your profile</Text>
+                <Text style={s.proBody}>
+                  Custom fields, gear insights, and premium community
+                  features for $4/mo or $24/yr.
+                </Text>
+                <Action
+                  icon="star-outline"
+                  label={
+                    billingBusy === "monthly" ? "Starting…" : "Upgrade — $4/mo"
+                  }
+                  primary
+                  onPress={() => upgrade("monthly")}
+                />
+                <Pressable
+                  onPress={() => upgrade("yearly")}
+                  disabled={billingBusy === "yearly"}
+                >
+                  <Text style={s.proYearlyLink}>
+                    {billingBusy === "yearly"
+                      ? "Starting…"
+                      : "or save with $24/yr →"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
           <View style={s.sideCard}>
             <Text style={s.eyebrow}>QUICK LINKS</Text>
             <Pressable
@@ -916,6 +995,35 @@ const s = StyleSheet.create({
     borderColor: "#293231",
     borderRadius: 13,
     padding: 17,
+  },
+  proCard: { borderColor: "#5C4B2E", backgroundColor: "#181410" },
+  proHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  proEyebrow: {
+    color: ORANGE,
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
+  proTitle: { color: "#F3F1E8", fontSize: 18, fontWeight: "900", marginTop: 4 },
+  proBody: {
+    color: "#9DA9A3",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  proManageLink: {
+    color: ORANGE,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  proYearlyLink: {
+    color: "#9DA9A3",
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 10,
+    textAlign: "center",
   },
   sideTitle: {
     color: "#E7EBE8",
