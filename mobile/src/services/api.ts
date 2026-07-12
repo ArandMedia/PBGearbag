@@ -17,9 +17,13 @@ class ApiClient {
     this.client = axios.create({
       baseURL: API_URL,
       timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      // No default Content-Type here — axios already sets
+      // application/json automatically for plain-object bodies. Forcing it
+      // as an instance default broke file uploads: when a 401 triggers the
+      // retry-after-refresh path below, axios re-merges instance defaults
+      // onto the reused request config, which brought this header back
+      // even for FormData bodies and made axios JSON.stringify the
+      // FormData into a plain string instead of sending it as multipart.
     });
 
     // Request interceptor to add auth token
@@ -55,6 +59,13 @@ class ApiClient {
               // Retry the original request
               if (error.config) {
                 error.config.headers.Authorization = `Bearer ${data.accessToken}`;
+                // Belt-and-suspenders: for FormData bodies, make sure no
+                // stale Content-Type survived onto the retried config —
+                // axios needs to detect the FormData itself and set its
+                // own boundary, not reuse a leftover header.
+                if (typeof FormData !== 'undefined' && error.config.data instanceof FormData) {
+                  delete error.config.headers['Content-Type'];
+                }
                 return this.client.request(error.config);
               }
             } catch (refreshError) {
