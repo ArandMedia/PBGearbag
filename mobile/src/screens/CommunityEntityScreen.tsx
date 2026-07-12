@@ -1,15 +1,48 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { communityService } from "../services/community.service";
+
+function RsvpButton({
+  label,
+  active,
+  onPress,
+  busy,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  busy: boolean;
+}) {
+  return (
+    <Pressable
+      style={[s.rsvpBtn, active && s.rsvpBtnActive]}
+      onPress={onPress}
+      disabled={busy}
+    >
+      {busy && active ? (
+        <ActivityIndicator size="small" color="#10140D" />
+      ) : (
+        <Text style={[s.rsvpBtnText, active && s.rsvpBtnTextActive]}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
 export default function CommunityEntityScreen({ route }: any) {
   const { kind, slug } = route.params || {};
   const [data, setData] = useState<any>();
+  const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
+  const [rsvpBusy, setRsvpBusy] = useState(false);
   useEffect(() => {
     const load =
       kind === "field"
@@ -28,12 +61,45 @@ export default function CommunityEntityScreen({ route }: any) {
   const location = [data.city, data.region, data.country]
     .filter(Boolean)
     .join(", ");
+  const rsvp = async (status: "going" | "interested" | "not_going") => {
+    setRsvpBusy(true);
+    try {
+      await communityService.rsvp(data.id, status);
+      setRsvpStatus(status);
+    } catch {
+      Alert.alert("Couldn't save your RSVP", "Please try again in a moment.");
+    } finally {
+      setRsvpBusy(false);
+    }
+  };
   return (
     <ScrollView style={s.page} contentContainerStyle={s.content}>
       <Text style={s.kicker}>{kind?.toUpperCase()}</Text>
       <Text style={s.title}>{data.name || data.title}</Text>
       <Text style={s.place}>{location}</Text>
       <Text style={s.body}>{data.description}</Text>
+      {kind === "event" && (
+        <View style={s.rsvpRow}>
+          <RsvpButton
+            label="GOING"
+            active={rsvpStatus === "going"}
+            busy={rsvpBusy}
+            onPress={() => rsvp("going")}
+          />
+          <RsvpButton
+            label="INTERESTED"
+            active={rsvpStatus === "interested"}
+            busy={rsvpBusy}
+            onPress={() => rsvp("interested")}
+          />
+          <RsvpButton
+            label="CAN'T GO"
+            active={rsvpStatus === "not_going"}
+            busy={rsvpBusy}
+            onPress={() => rsvp("not_going")}
+          />
+        </View>
+      )}
       <View style={s.card}>
         <Text style={s.label}>DETAILS</Text>
         {data.type && <Text style={s.detail}>TYPE · {data.type}</Text>}
@@ -42,6 +108,20 @@ export default function CommunityEntityScreen({ route }: any) {
         )}
         {data.eventType && (
           <Text style={s.detail}>FORMAT · {data.eventType}</Text>
+        )}
+        {kind === "event" && data.costCents != null && (
+          <Text style={s.detail}>
+            COST ·{" "}
+            {data.costCents === 0
+              ? "Free"
+              : `$${(data.costCents / 100).toFixed(2)}`}
+          </Text>
+        )}
+        {kind === "event" && data.capacity != null && (
+          <Text style={s.detail}>CAPACITY · {data.capacity} players</Text>
+        )}
+        {kind === "event" && data.registrationUrl && (
+          <Text style={s.detail}>REGISTRATION · {data.registrationUrl}</Text>
         )}
         {data.isVerified && <Text style={s.verified}>✓ VERIFIED</Text>}
         {data.isRecruiting && (
@@ -69,6 +149,19 @@ const s = StyleSheet.create({
   title: { color: "#F3F1E8", fontSize: 34, fontWeight: "900", marginTop: 8 },
   place: { color: "#77827D", marginTop: 7 },
   body: { color: "#B8C1BC", fontSize: 15, lineHeight: 23, marginTop: 22 },
+  rsvpRow: { flexDirection: "row", gap: 8, marginTop: 20, flexWrap: "wrap" },
+  rsvpBtn: {
+    borderWidth: 1,
+    borderColor: "#3B4645",
+    borderRadius: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    minWidth: 90,
+    alignItems: "center",
+  },
+  rsvpBtnActive: { backgroundColor: "#A8C84A", borderColor: "#A8C84A" },
+  rsvpBtnText: { color: "#D6DDDA", fontSize: 10, fontWeight: "900" },
+  rsvpBtnTextActive: { color: "#10140D" },
   card: {
     marginTop: 25,
     backgroundColor: "#121819",
