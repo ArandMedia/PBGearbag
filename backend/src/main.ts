@@ -53,8 +53,30 @@ export async function createApp() {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
+  // Vercel serves the app on both the bare domain and the www subdomain,
+  // but only one of those matches FRONTEND_URL exactly — a hardcoded
+  // single-origin string here means every request from whichever one
+  // *doesn't* match gets silently CORS-blocked in the browser (no
+  // network error surfaces cleanly; it just looks like login/every
+  // request is broken). Allow both the configured origin and its www
+  // counterpart.
+  const frontendUrl = configService.get('FRONTEND_URL') || 'http://localhost:19006';
+  const allowedOrigins = new Set([frontendUrl]);
+  try {
+    const url = new URL(frontendUrl);
+    allowedOrigins.add(
+      url.hostname.startsWith('www.')
+        ? frontendUrl.replace('www.', '')
+        : `${url.protocol}//www.${url.host}`,
+    );
+  } catch {
+    // frontendUrl wasn't a valid absolute URL — nothing to derive, skip.
+  }
   app.enableCors({
-    origin: configService.get('FRONTEND_URL') || 'http://localhost:19006',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) callback(null, true);
+      else callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   });
 
