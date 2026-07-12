@@ -18,6 +18,8 @@ import { useAuth } from "../store/AuthContext";
 import { communityService, Gearbag } from "../services/community.service";
 import { Listing, marketplaceService } from "../services/marketplace.service";
 import { billingService, BillingStatus } from "../services/billing.service";
+import { ProfileWidget, widgetsService } from "../services/widgets.service";
+import { WidgetRenderer } from "../components/WidgetCards";
 
 const TURF = "#A8C84A",
   INK = "#0A0E0F",
@@ -138,6 +140,9 @@ export default function ProfileScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [billingBusy, setBillingBusy] = useState<"monthly" | "yearly" | "manage" | null>(null);
+  const [widgets, setWidgets] = useState<ProfileWidget[]>([]);
+  const [team, setTeam] = useState<any>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   useEffect(() => {
     Promise.all([
       communityService.gearbags(),
@@ -155,7 +160,12 @@ export default function ProfileScreen({ navigation }: any) {
       .getStatus()
       .then(setBilling)
       .catch(() => {});
-  }, []);
+    if (user?.id) {
+      widgetsService.mine().then(setWidgets).catch(() => {});
+      communityService.myTeam(user.id).then(setTeam).catch(() => {});
+      communityService.upcomingEvents(user.id).then(setUpcomingEvents).catch(() => {});
+    }
+  }, [user?.id]);
   const upgrade = async (plan: "monthly" | "yearly") => {
     setBillingBusy(plan);
     try {
@@ -559,6 +569,14 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={s.quickText}>Notifications</Text>
               <Text style={s.rowArrow}>→</Text>
             </Pressable>
+            <Pressable
+              style={s.quickRow}
+              onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
+            >
+              <Ionicons name="apps-outline" size={18} color={TURF} />
+              <Text style={s.quickText}>Customize profile widgets</Text>
+              <Text style={s.rowArrow}>→</Text>
+            </Pressable>
             {user.roles?.some((x) => x === "admin" || x === "moderator") && (
               <Pressable
                 style={s.quickRow}
@@ -624,6 +642,42 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
       </View>
+
+      <View style={s.sectionHeader}>
+        <View>
+          <Text style={s.eyebrow}>PLUGINS</Text>
+          <Text style={s.sectionTitle}>Profile widgets</Text>
+        </View>
+        <Pressable
+          onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
+        >
+          <Text style={s.textLink}>CUSTOMIZE →</Text>
+        </Pressable>
+      </View>
+      {widgets.length ? (
+        <View style={s.widgetGrid}>
+          {widgets
+            .filter((w) => w.isVisible)
+            .map((w) => (
+              <View key={w.id} style={s.widgetSlot}>
+                <WidgetRenderer
+                  widget={w}
+                  ctx={{ user, bag, team, upcomingEvents, listings }}
+                />
+              </View>
+            ))}
+        </View>
+      ) : (
+        <Pressable
+          style={s.widgetEmpty}
+          onPress={() => navigation.getParent()?.navigate("CustomizeWidgets")}
+        >
+          <Ionicons name="apps-outline" size={20} color={TURF} />
+          <Text style={s.widgetEmptyText}>
+            Add widgets to customize your profile for how you play.
+          </Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -1072,4 +1126,25 @@ const s = StyleSheet.create({
   accountLink: { color: "#7E8985", fontSize: 10 },
   logout: { color: "#B97861", fontSize: 10 },
   muted: { color: "#78827F" },
+  widgetGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  widgetSlot: { width: 280, flexGrow: 1, minWidth: 240 },
+  widgetEmpty: {
+    borderWidth: 1,
+    borderColor: "#34422F",
+    borderStyle: "dashed",
+    borderRadius: 13,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  widgetEmptyText: { color: "#9DA9A3", fontSize: 12, flex: 1 },
 });

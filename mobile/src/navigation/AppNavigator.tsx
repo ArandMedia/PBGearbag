@@ -42,6 +42,7 @@ import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
+import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -260,6 +261,11 @@ function MainStack() {
         name="EditProfile"
         component={EditProfileScreen}
         options={detailOptions("Edit Profile")}
+      />
+      <Stack.Screen
+        name="CustomizeWidgets"
+        component={CustomizeWidgetsScreen}
+        options={detailOptions("Customize Profile")}
       />
       <Stack.Screen
         name="ListingDetail"

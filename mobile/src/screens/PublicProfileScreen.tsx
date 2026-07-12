@@ -12,17 +12,26 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { authService, User } from "../services/auth.service";
 import { socialService } from "../services/social.service";
+import { communityService } from "../services/community.service";
+import { ProfileWidget, widgetsService } from "../services/widgets.service";
+import { WidgetRenderer } from "../components/WidgetCards";
 const T = "#A8C84A";
 export default function PublicProfileScreen({ route }: any) {
   const uId = route.params?.userId;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
+  const [widgets, setWidgets] = useState<ProfileWidget[]>([]);
+  const [team, setTeam] = useState<any>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   useEffect(() => {
     authService
       .getPublicUser(uId)
       .then(setUser)
       .finally(() => setLoading(false));
+    widgetsService.forUser(uId).then(setWidgets).catch(() => {});
+    communityService.myTeam(uId).then(setTeam).catch(() => {});
+    communityService.upcomingEvents(uId).then(setUpcomingEvents).catch(() => {});
   }, [uId]);
   if (loading)
     return (
@@ -104,6 +113,15 @@ export default function PublicProfileScreen({ route }: any) {
           EXPERIENCE · {user.skillLevel || "Not listed"}
         </Text>
       </View>
+      {widgets.length > 0 && (
+        <View style={s.widgetGrid}>
+          {widgets.map((w) => (
+            <View key={w.id} style={s.widgetSlot}>
+              <WidgetRenderer widget={w} ctx={{ user, team, upcomingEvents }} />
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -249,4 +267,11 @@ const s = StyleSheet.create({
     borderBottomColor: "#28312F",
   },
   muted: { color: "#84908A" },
+  widgetGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 16,
+  },
+  widgetSlot: { width: "100%" },
 });
