@@ -117,6 +117,23 @@ export class BillingService {
   }
 
   async getStatus(userId: string): Promise<SubscriptionStatusResult> {
+    // The platform's own super admin gets Pro for free, permanently — no
+    // real subscription row needed, so there's nothing to expire, get out
+    // of sync with Stripe, or accidentally cancel.
+    const superAdminEmail = (
+      this.configService.get('SUPER_ADMIN_EMAIL') || 'andrew@arandmedia.com'
+    ).toLowerCase();
+    const user = await this.usersService.findById(userId);
+    if (user?.email?.toLowerCase() === superAdminEmail) {
+      return {
+        isPro: true,
+        plan: SubscriptionPlan.YEARLY,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+      };
+    }
+
     const subscription = await this.subscriptionRepository.findOne({
       where: { userId },
       order: { updatedAt: 'DESC' },
