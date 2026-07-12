@@ -43,7 +43,25 @@ class ApiClient {
       (response) => response,
       async (error: AxiosError<ApiError>) => {
         // Handle 401 Unauthorized
-        if (error.response?.status === 401) {
+        // Auth endpoints that don't take a bearer token return 401 for
+        // reasons that have nothing to do with an expired access token
+        // (wrong password, reused/invalid refresh token, etc). Treating
+        // those as "access token expired" used to send this request
+        // through the refresh-and-retry path below anyway: refresh would
+        // succeed off a stale-but-still-valid refresh token left over in
+        // localStorage from a previous session, then the ORIGINAL
+        // request — e.g. a mistyped login — would be retried and 401
+        // again, re-entering this same interceptor and refreshing again.
+        // That loop fired dozens of requests in under a second, which was
+        // enough on its own to exhaust the auth rate limiter — so a single
+        // typo produced a 429 that the UI showed as "check your
+        // credentials" on every attempt, correct password included, until
+        // the 15-minute window reset (which a password-reset detour is
+        // just slow enough to outlast, making the reset look like the fix).
+        const isAuthEndpoint = /\/auth\/(login|register|refresh)(\?|$)/.test(
+          error.config?.url || '',
+        );
+        if (error.response?.status === 401 && !isAuthEndpoint) {
           // Token expired, try to refresh
           const refreshToken = await tokenStorage.get('refreshToken');
           if (refreshToken) {
