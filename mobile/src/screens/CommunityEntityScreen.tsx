@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { Alert } from "../utils/alert";
 import { communityService } from "../services/community.service";
 
 function RsvpButton({

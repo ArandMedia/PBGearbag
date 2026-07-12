@@ -7,10 +7,10 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { Alert } from '../utils/alert';
 import * as ImagePicker from 'expo-image-picker';
 import {
   marketplaceService,

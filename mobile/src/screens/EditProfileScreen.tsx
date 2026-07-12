@@ -7,9 +7,9 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
+import { Alert } from "../utils/alert";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../store/AuthContext";
 import { authService } from "../services/auth.service";

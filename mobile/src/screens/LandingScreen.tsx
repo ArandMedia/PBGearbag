@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Alert,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { Alert } from "../utils/alert";
 import { useAuth } from "../store/AuthContext";
 
 const lime = "#A8C84A";

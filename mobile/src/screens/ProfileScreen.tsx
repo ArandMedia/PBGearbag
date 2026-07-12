@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ImageBackground,
   Linking,
@@ -13,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Alert } from "../utils/alert";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuth } from "../store/AuthContext";
 import { communityService, Gearbag } from "../services/community.service";

@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Dimensions,
 } from 'react-native';
+import { Alert } from '../utils/alert';
 import { marketplaceService, Listing } from '../services/marketplace.service';
 import { useAuth } from '../store/AuthContext';
 import { communityService } from '../services/community.service';

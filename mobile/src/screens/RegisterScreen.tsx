@@ -8,9 +8,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { Alert } from '../utils/alert';
 import { useAuth } from '../store/AuthContext';
 
 export default function RegisterScreen({ navigation }: any) {

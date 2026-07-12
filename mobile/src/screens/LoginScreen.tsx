@@ -8,10 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   ImageBackground,
 } from 'react-native';
+import { Alert } from '../utils/alert';
 import { useAuth } from '../store/AuthContext';
 const hero = require('../../assets/brand/pbgearbag-hero-v1.jpg');
 
