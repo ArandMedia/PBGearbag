@@ -17,6 +17,7 @@ import { HealthModule } from './health/health.module';
 import { dataSourceOptions } from './config/typeorm.config';
 import { CommunityModule } from './community/community.module';
 import { BillingModule } from './billing/billing.module';
+import { ProfileWidgetsModule } from './profile-widgets/profile-widgets.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { BillingModule } from './billing/billing.module';
     HealthModule,
     CommunityModule,
     BillingModule,
+    ProfileWidgetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -73,3 +73,9 @@ export class NotificationsController { constructor(private s:CommunityService){}
 
 @Controller('reports')
 export class ReportsController { constructor(private s:CommunityService){} @Post() create(@CurrentUser()u:User,@Body()d:ReportDto){return this.s.createReport(u.id,d)} @Get() @Roles(UserRole.MODERATOR,UserRole.ADMIN) list(){return this.s.listReports()} @Patch(':id') @Roles(UserRole.MODERATOR,UserRole.ADMIN) resolve(@Param('id')id:string,@Body()d:ResolveReportDto){return this.s.resolveReport(id,d)} }
+
+@Controller('profile-data')
+export class ProfileDataController { constructor(private s:CommunityService){}
+  @Get(':userId/team') @Public() team(@Param('userId')userId:string){return this.s.myTeam(userId)}
+  @Get(':userId/upcoming-events') @Public() upcomingEvents(@Param('userId')userId:string){return this.s.myUpcomingEvents(userId)}
+}
