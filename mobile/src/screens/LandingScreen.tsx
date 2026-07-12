@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,22 @@ export default function LandingScreen({ navigation }: any) {
   const { login, loading } = useAuth();
   const [identity, setIdentity] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const handleLogin = async () => {
+    if (!identity.trim() || !password) {
+      Alert.alert("Missing info", "Enter your username or email and password.");
+      return;
+    }
+    try {
+      await login({ usernameOrEmail: identity.trim(), password });
+    } catch (err: any) {
+      Alert.alert(
+        "Sign in failed",
+        err.response?.data?.error?.message ||
+          err.response?.data?.message ||
+          "Check your username/email and password and try again.",
+      );
+    }
+  };
   const features = [
     [
       "FIELD FEED",
@@ -83,9 +100,7 @@ export default function LandingScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             style={s.primary}
-            onPress={() =>
-              login({ usernameOrEmail: identity.trim(), password })
-            }
+            onPress={handleLogin}
             disabled={loading}
           >
             <Text style={s.primaryText}>
