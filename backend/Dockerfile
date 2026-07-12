@@ -25,8 +25,6 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-
 COPY package*.json ./
 COPY backend/package*.json ./backend/
 COPY mobile/package.json ./mobile/
@@ -35,6 +33,10 @@ RUN npm ci
 
 COPY . .
 RUN npm run build --workspace=@pbg/backend
+
+# Set after the build so devDependencies (@nestjs/cli etc.) are still
+# installed above — npm skips them automatically once NODE_ENV=production.
+ENV NODE_ENV=production
 
 # Create app user for security
 RUN addgroup -g 1001 -S nodejs && \
