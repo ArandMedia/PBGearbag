@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { MessagePermission, User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -9,6 +9,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private dataSource: DataSource,
   ) {}
 
   async create(userData: Partial<User>): Promise<User> {
@@ -99,7 +100,22 @@ export class UsersService {
   async applyPendingEmailChange(id:string,email:string):Promise<void>{await this.usersRepository.update(id,{email,pendingEmail:null as any})}
 
   async remove(id: string): Promise<void> {
-    await this.usersRepository.delete(id);
+    // Most tables cascade cleanly from users(id), but listing_offers and
+    // listing_favorites carry a legacy constraint (from an early
+    // synchronize:true deploy) that isn't ON DELETE CASCADE, so deleting a
+    // user with an active listing that has offers/favorites on it 500s
+    // unless those rows are cleared first.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        `DELETE FROM listing_offers WHERE buyer_id = $1 OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1)`,
+        [id],
+      );
+      await manager.query(
+        `DELETE FROM listing_favorites WHERE user_id = $1 OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1)`,
+        [id],
+      );
+      await manager.delete(User, id);
+    });
   }
 
   async findAll(page: number = 1, limit: number = 20): Promise<[User[], number]> {
