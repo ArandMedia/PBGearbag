@@ -8,6 +8,7 @@ import {
 } from "@react-navigation/drawer";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -307,8 +308,15 @@ const navTheme = {
     text: "#F5F7F8",
   },
 };
+function getUrlVerifyToken(): string | undefined {
+  if (Platform.OS !== "web" || typeof window === "undefined") return undefined;
+  if (window.location.pathname !== "/verify-email") return undefined;
+  return new URLSearchParams(window.location.search).get("token") || undefined;
+}
+
 export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
+  const urlToken = getUrlVerifyToken();
   if (loading)
     return (
       <View style={styles.loading}>
@@ -316,13 +324,19 @@ export default function AppNavigator() {
         <ActivityIndicator size="large" color={LIME} />
       </View>
     );
+  // A verification link can be opened without an active session (e.g. on a
+  // different device than the one used to register), so this has to work
+  // standalone rather than only inside the authenticated app shell.
+  if (urlToken && !isAuthenticated) {
+    return <VerifyEmailScreen initialToken={urlToken} />;
+  }
   return (
     <NavigationContainer theme={navTheme}>
       {isAuthenticated ? (
         user?.isVerified ? (
           <MainStack />
         ) : (
-          <VerifyEmailScreen />
+          <VerifyEmailScreen initialToken={urlToken} />
         )
       ) : (
         <AuthStack />
