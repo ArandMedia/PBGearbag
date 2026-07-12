@@ -151,7 +151,12 @@ export class UsersController {
     if (!withPassword || !(await bcrypt.compare(dto.password, withPassword.password))) {
       throw new UnauthorizedException('Password is incorrect');
     }
-    await this.usersService.remove(user.id);
+    try {
+      await this.usersService.remove(user.id);
+    } catch (err: any) {
+      // TEMP diagnostic — surfaces the real DB error instead of a bare 500.
+      throw new BadRequestException(`DEBUG: ${err.message} | detail: ${err.detail || 'n/a'} | table: ${err.table || 'n/a'} | constraint: ${err.constraint || 'n/a'}`);
+    }
     return { message: 'Account deleted successfully' };
   }
 
