@@ -107,11 +107,11 @@ export class UsersService {
     // unless those rows are cleared first.
     await this.dataSource.transaction(async (manager) => {
       await manager.query(
-        `DELETE FROM listing_offers WHERE buyer_id = $1 OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1)`,
+        `DELETE FROM listing_offers WHERE buyer_id = $1::uuid OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1::uuid)`,
         [id],
       );
       await manager.query(
-        `DELETE FROM listing_favorites WHERE user_id = $1 OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1)`,
+        `DELETE FROM listing_favorites WHERE user_id = $1::uuid OR listing_id IN (SELECT id FROM listings WHERE seller_id = $1::uuid)`,
         [id],
       );
       await manager.delete(User, id);
