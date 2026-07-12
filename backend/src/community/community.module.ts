@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditLog, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, Organization, Report, Review, Team, TeamApplication, TeamMember } from './entities/community.entity';
+import { Announcement, AuditLog, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, Organization, OrganizationFollow, Report, Review, Team, TeamApplication, TeamMember } from './entities/community.entity';
 import { Listing } from '../marketplace/entities/listing.entity';
 import { User } from '../users/entities/user.entity';
 import { SocialModule } from '../social/social.module';
 import { CommunityService } from './community.service';
 import { EventsController, GearbagsController, MarketplaceTrustController, MessagesController, NotificationsController, OrganizationsController, ProfileDataController, ReportsController, TeamsController } from './community.controller';
 
-export const communityEntities=[Gearbag,GearItem,Team,TeamMember,TeamApplication,Organization,CommunityEvent,EventRsvp,Conversation,ConversationParticipant,Message,ListingFavorite,ListingOffer,Review,Report,Notification,AuditLog];
+export const communityEntities=[Gearbag,GearItem,Team,TeamMember,TeamApplication,Organization,OrganizationFollow,CommunityEvent,EventRsvp,Conversation,ConversationParticipant,Message,ListingFavorite,ListingOffer,Review,Report,Notification,AuditLog,Announcement];
 
 @Module({imports:[TypeOrmModule.forFeature([...communityEntities,Listing,User]),SocialModule],providers:[CommunityService],controllers:[GearbagsController,TeamsController,OrganizationsController,EventsController,MessagesController,MarketplaceTrustController,NotificationsController,ReportsController,ProfileDataController],exports:[TypeOrmModule,CommunityService]})
 export class CommunityModule {}

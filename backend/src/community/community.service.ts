@@ -4,17 +4,19 @@ import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
 import { MessagePermission, User } from '../users/entities/user.entity';
 import { SocialService } from '../social/social.service';
-import { ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
+import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
 
 @Injectable()
 export class CommunityService {
   constructor(private readonly db:DataSource, private readonly social:SocialService,
     @InjectRepository(Gearbag) private gearbags:Repository<Gearbag>, @InjectRepository(GearItem) private gearItems:Repository<GearItem>,
     @InjectRepository(Team) private teams:Repository<Team>, @InjectRepository(TeamMember) private teamMembers:Repository<TeamMember>, @InjectRepository(TeamApplication) private applications:Repository<TeamApplication>,
-    @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(CommunityEvent) private events:Repository<CommunityEvent>, @InjectRepository(EventRsvp) private rsvps:Repository<EventRsvp>,
+    @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(OrganizationFollow) private orgFollows:Repository<OrganizationFollow>,
+    @InjectRepository(CommunityEvent) private events:Repository<CommunityEvent>, @InjectRepository(EventRsvp) private rsvps:Repository<EventRsvp>,
     @InjectRepository(Conversation) private conversations:Repository<Conversation>, @InjectRepository(ConversationParticipant) private participants:Repository<ConversationParticipant>, @InjectRepository(Message) private messages:Repository<Message>,
     @InjectRepository(Listing) private listings:Repository<Listing>, @InjectRepository(ListingFavorite) private favorites:Repository<ListingFavorite>, @InjectRepository(ListingOffer) private offers:Repository<ListingOffer>,
     @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>,
+    @InjectRepository(Announcement) private announcements:Repository<Announcement>,
     @InjectRepository(User) private users:Repository<User>) {}
 
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
@@ -32,13 +34,35 @@ export class CommunityService {
   async updateTeam(userId:string,id:string,data:Partial<Team>){await this.requireTeamManager(userId,id);const team=await this.teams.findOneByOrFail({id});Object.assign(team,data,{id,ownerId:team.ownerId,slug:team.slug});return this.teams.save(team)}
   async applyTeam(userId:string,teamId:string,message?:string){if(await this.teamMembers.exist({where:{teamId,userId,isActive:true}}))throw new BadRequestException('Already a team member');const existing=await this.applications.findOne({where:{teamId,userId,status:ApplicationStatus.PENDING}});return existing||this.applications.save(this.applications.create({teamId,userId,message,status:ApplicationStatus.PENDING}))}
   async teamApplications(userId:string,teamId:string){await this.requireTeamManager(userId,teamId);return this.applications.find({where:{teamId},order:{createdAt:'DESC'}})}
+  async teamMembership(userId:string,teamId:string){return this.teamMembers.findOne({where:{teamId,userId,isActive:true}})}
   async myTeam(userId:string){const membership=await this.teamMembers.findOne({where:{userId,isActive:true},order:{joinedAt:'ASC'}});if(!membership)return null;const team=await this.teams.findOneBy({id:membership.teamId});return team?{...team,role:membership.role}:null}
   async decideApplication(userId:string,id:string,status:ApplicationStatus){const app=await this.applications.findOneBy({id});if(!app)throw new NotFoundException('Application not found');await this.requireTeamManager(userId,app.teamId);app.status=status;await this.applications.save(app);if(status===ApplicationStatus.APPROVED&&!await this.teamMembers.exist({where:{teamId:app.teamId,userId:app.userId}}))await this.teamMembers.save({teamId:app.teamId,userId:app.userId,role:TeamMemberRole.PLAYER,isActive:true});return app}
 
   listOrganizations(type?:string){return type?this.organizations.find({where:{type:type as any},order:{name:'ASC'}}):this.organizations.find({order:{name:'ASC'}})}
-  getOrganization(slug:string){return this.organizations.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Organization not found');return x})}
+  async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
   async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
   async claimOrganization(userId:string,id:string){const org=await this.organizations.findOneBy({id});if(!org)throw new NotFoundException('Organization not found');if(org.claimedById)throw new BadRequestException('Organization already claimed');org.claimedById=userId;return this.organizations.save(org)}
+
+  async followOrganization(userId:string,organizationId:string){const existing=await this.orgFollows.findOne({where:{userId,organizationId}});if(existing){await this.orgFollows.remove(existing);return {active:false}}if(!await this.organizations.exist({where:{id:organizationId}}))throw new NotFoundException('Organization not found');await this.orgFollows.save(this.orgFollows.create({userId,organizationId}));return {active:true}}
+  async myFollowedOrganizations(userId:string){const rows=await this.orgFollows.find({where:{userId}});return rows.length?this.organizations.find({where:{id:In(rows.map(r=>r.organizationId))},order:{name:'ASC'}}):[]}
+
+  async createAnnouncement(userId:string,sourceType:AnnouncementSourceType,sourceId:string,data:{title:string;body:string;expiresAt?:Date}){
+    if(sourceType==='organization'){const org=await this.organizations.findOneBy({id:sourceId});if(!org)throw new NotFoundException('Field not found');if(org.claimedById!==userId)throw new ForbiddenException('Only this field\'s claimed owner can post announcements for it')}
+    else if(sourceType==='event'){const event=await this.events.findOneBy({id:sourceId});if(!event)throw new NotFoundException('Event not found');if(event.organizerId!==userId)throw new ForbiddenException('Only the organizer can post announcements for this event')}
+    else if(sourceType==='team'){await this.requireTeamManager(userId,sourceId)}
+    else{throw new BadRequestException('Unknown announcement source')}
+    const announcement=await this.announcements.save(this.announcements.create({sourceType,sourceId,authorId:userId,...data}));
+    const audience=await this.announcementAudience(sourceType,sourceId);
+    if(audience.length){const actor=await this.actorName(userId);await this.notifications.save(audience.map(uid=>this.notifications.create({userId:uid,type:'announcement',title:data.title,body:`${actor}: ${data.body}`,data:{sourceType,sourceId,announcementId:announcement.id}})))}
+    return announcement;
+  }
+  listAnnouncements(sourceType:AnnouncementSourceType,sourceId:string){return this.announcements.find({where:{sourceType,sourceId},order:{createdAt:'DESC'},take:50})}
+  private async announcementAudience(sourceType:AnnouncementSourceType,sourceId:string):Promise<string[]>{
+    if(sourceType==='organization')return (await this.orgFollows.find({where:{organizationId:sourceId}})).map(r=>r.userId);
+    if(sourceType==='event')return (await this.rsvps.find({where:{eventId:sourceId,status:In([RsvpStatus.GOING,RsvpStatus.INTERESTED])}})).map(r=>r.userId);
+    if(sourceType==='team')return (await this.teamMembers.find({where:{teamId:sourceId,isActive:true}})).map(r=>r.userId);
+    return [];
+  }
 
   listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED},order:{startsAt:'ASC'}})}
   getEvent(slug:string){return this.events.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}

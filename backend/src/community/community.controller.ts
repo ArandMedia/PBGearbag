@@ -21,6 +21,7 @@ class OfferDto { @IsOptional() @IsInt() @Min(1) amountCents?:number; @IsOptional
 class ReportDto { @IsString() subjectId:string; @IsString() subjectType:string; @IsString() category:string; @IsString() @IsNotEmpty() description:string }
 class ResolveReportDto { @IsEnum(ReportStatus) status:ReportStatus; @IsOptional() @IsString() resolutionNotes?:string; @IsOptional() @IsString() assignedToId?:string }
 class ReviewDto { @IsString() subjectId:string; @IsString() subjectType:string; @IsInt() @Min(1) @Max(5) rating:number; @IsOptional() @IsString() body?:string; @IsOptional() @IsString() outcomeId?:string }
+class AnnouncementDto { @IsString() @IsNotEmpty() title:string; @IsString() @IsNotEmpty() body:string; @IsOptional() @IsDateString() expiresAt?:any }
 
 @Controller('gearbags')
 export class GearbagsController { constructor(private s:CommunityService){}
@@ -40,6 +41,9 @@ export class TeamsController { constructor(private s:CommunityService){}
   @Post(':id/applications') apply(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ApplicationDto){return this.s.applyTeam(u.id,id,d.message)}
   @Get(':id/applications/manage') applications(@CurrentUser()u:User,@Param('id')id:string){return this.s.teamApplications(u.id,id)}
   @Patch('applications/:id') decide(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ApplicationDecisionDto){return this.s.decideApplication(u.id,id,d.status)}
+  @Get(':id/membership') async membership(@CurrentUser()u:User,@Param('id')id:string){const m=await this.s.teamMembership(u.id,id);return {role:m?.role||null}}
+  @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('team',id)}
+  @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'team',id,d)}
 }
 
 @Controller('organizations')
@@ -47,6 +51,10 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Get() @Public() list(@Query('type')type?:string){return this.s.listOrganizations(type)} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getOrganization(slug)}
   @Post('suggestions') suggest(@CurrentUser()u:User,@Body()d:OrganizationDto){return this.s.suggestOrganization(u.id,d)} @Post(':id/claim') claim(@CurrentUser()u:User,@Param('id')id:string){return this.s.claimOrganization(u.id,id)}
   @Post(':id/reviews') review(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Omit<ReviewDto,'subjectId'|'subjectType'>){return this.s.createReview(u.id,{...d,subjectId:id,subjectType:'organization'})}
+  @Get('followed/mine') followed(@CurrentUser()u:User){return this.s.myFollowedOrganizations(u.id)}
+  @Post(':id/follow') follow(@CurrentUser()u:User,@Param('id')id:string){return this.s.followOrganization(u.id,id)}
+  @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('organization',id)}
+  @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'organization',id,d)}
 }
 
 @Controller('events')
@@ -54,6 +62,8 @@ export class EventsController { constructor(private s:CommunityService){}
   @Get() @Public() list(){return this.s.listEvents()} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getEvent(slug)}
   @Post() create(@CurrentUser()u:User,@Body()d:EventDto){return this.s.createEvent(u.id,d as any)} @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<EventDto>){return this.s.updateEvent(u.id,id,d as any)}
   @Post(':id/rsvp') rsvp(@CurrentUser()u:User,@Param('id')id:string,@Body()d:RsvpDto){return this.s.rsvpEvent(u.id,id,d.status,d.visibility)}
+  @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('event',id)}
+  @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'event',id,d)}
 }
 
 @Controller('conversations')

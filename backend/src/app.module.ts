@@ -19,6 +19,7 @@ import { CommunityModule } from './community/community.module';
 import { BillingModule } from './billing/billing.module';
 import { ProfileWidgetsModule } from './profile-widgets/profile-widgets.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HomeModule } from './home/home.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     BillingModule,
     ProfileWidgetsModule,
     NotificationsModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

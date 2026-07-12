@@ -164,3 +164,39 @@ export class AuditLog {
   @Column({name:'subject_type'}) subjectType:string; @Column({name:'subject_id',type:'uuid',nullable:true}) subjectId?:string; @Column({name:'request_id',nullable:true}) requestId?:string;
   @Column({type:'jsonb',default:()=>"'{}'::jsonb"}) metadata:Record<string,unknown>; @CreateDateColumn({name:'created_at'}) createdAt:Date;
 }
+
+// A player following a field/retailer/league/etc — the signal that drives
+// which announcements and Home "Field Wire" activity they care about.
+@Entity('organization_follows') @Index(['userId','organizationId'],{unique:true})
+export class OrganizationFollow {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'user_id'}) userId:string;
+  @Index() @Column({name:'organization_id'}) organizationId:string;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date;
+}
+
+// A broadcast from a field owner, event organizer, or team manager/captain.
+// sourceType+sourceId points at whichever entity posted it; who sees it is
+// computed at read time from follows/RSVPs/membership, not stored here.
+export type AnnouncementSourceType = 'organization' | 'event' | 'team';
+@Entity('announcements')
+export class Announcement {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'source_type'}) sourceType:AnnouncementSourceType;
+  @Index() @Column({name:'source_id'}) sourceId:string;
+  @Column({name:'author_id'}) authorId:string;
+  @Column() title:string; @Column({type:'text'}) body:string;
+  @Column({name:'expires_at',type:'timestamptz',nullable:true}) expiresAt?:Date;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date;
+}
+
+// One row per user: the saved order/visibility of their Home dashboard
+// blocks. The billboard carousel isn't in here — it's fixed above the
+// blocks, not a reorderable/hideable block itself.
+@Entity('home_layouts')
+export class HomeLayout {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index({unique:true}) @Column({name:'user_id'}) userId:string;
+  @Column({type:'jsonb',default:()=>"'[]'::jsonb"}) blocks:{key:string;hidden:boolean}[];
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}
