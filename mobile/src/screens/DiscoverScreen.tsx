@@ -666,9 +666,16 @@ export default function DiscoverScreen({ navigation }: any) {
         <Text style={s.resultsText}>
           {resultCount} {mode.toUpperCase()} FOUND
         </Text>
-        <Pressable onPress={reset}>
-          <Text style={s.clear}>RESET FILTERS</Text>
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+          {mode === "fields" && (
+            <Pressable onPress={() => navigation.getParent()?.navigate("FieldsMap")}>
+              <Text style={s.clear}>MAP VIEW</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={reset}>
+            <Text style={s.clear}>RESET FILTERS</Text>
+          </Pressable>
+        </View>
       </View>
       {mode === "events" &&
         filteredEvents.map((e) => (

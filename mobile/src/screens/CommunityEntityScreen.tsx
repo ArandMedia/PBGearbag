@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,8 +10,22 @@ import {
   View,
 } from "react-native";
 import { Alert } from "../utils/alert";
-import { Announcement, communityService } from "../services/community.service";
+import { Announcement, communityService, Event } from "../services/community.service";
 import { useAuth } from "../store/AuthContext";
+
+const AMENITY_LABELS: Record<string, string> = {
+  rentals: "Rental equipment",
+  air: "Compressed air fills",
+  "4500": "4500 PSI fills",
+  "3000": "3000 PSI fills",
+  parking: "Parking",
+  "pro shop": "Pro shop",
+  wheelchair: "Accessible facilities",
+  restrooms: "Restrooms",
+  concessions: "Concessions",
+  lodging: "On-site lodging",
+  camping: "Camping",
+};
 
 function RsvpButton({
   label,
@@ -60,6 +75,11 @@ export default function CommunityEntityScreen({ route }: any) {
   const [announceTitle, setAnnounceTitle] = useState("");
   const [announceBody, setAnnounceBody] = useState("");
   const [posting, setPosting] = useState(false);
+  const [fieldEvents, setFieldEvents] = useState<Event[]>([]);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+  const [claimNote, setClaimNote] = useState("");
+  const [claiming, setClaiming] = useState(false);
+  const [claimSent, setClaimSent] = useState(false);
 
   useEffect(() => {
     const load =
@@ -79,6 +99,7 @@ export default function CommunityEntityScreen({ route }: any) {
         .followedOrganizations()
         .then((orgs) => setIsFollowing(orgs.some((o) => o.id === data.id)))
         .catch(() => {});
+      communityService.organizationEvents(data.id).then(setFieldEvents).catch(() => {});
     }
     if (kind === "team") {
       communityService
@@ -146,8 +167,27 @@ export default function CommunityEntityScreen({ route }: any) {
       setPosting(false);
     }
   };
+  const submitClaim = async () => {
+    setClaiming(true);
+    try {
+      await communityService.requestOrganizationClaim(data.id, claimNote.trim() || undefined);
+      setClaimSent(true);
+      setShowClaimForm(false);
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't submit claim request",
+        e?.response?.data?.message || "Please try again in a moment.",
+      );
+    } finally {
+      setClaiming(false);
+    }
+  };
+  const amenities: string[] = Array.isArray((data.details as any)?.amenities) ? (data.details as any).amenities : [];
   return (
     <ScrollView style={s.page} contentContainerStyle={s.content}>
+      {(data.images?.[0] || data.logoUrl) && (
+        <Image source={{ uri: data.images?.[0] || data.logoUrl }} style={s.banner} />
+      )}
       <Text style={s.kicker}>{kind?.toUpperCase()}</Text>
       <View style={s.titleRow}>
         <Text style={s.title}>{data.name || data.title}</Text>
@@ -219,11 +259,80 @@ export default function CommunityEntityScreen({ route }: any) {
         {kind === "event" && data.registrationUrl && (
           <Text style={s.detail}>REGISTRATION · {data.registrationUrl}</Text>
         )}
+        {kind === "field" && data.websiteUrl && (
+          <Text style={s.detail}>WEBSITE · {data.websiteUrl}</Text>
+        )}
+        {kind === "field" && data.phoneNumber && (
+          <Text style={s.detail}>PHONE · {data.phoneNumber}</Text>
+        )}
         {data.isVerified && <Text style={s.verified}>✓ VERIFIED</Text>}
         {data.isRecruiting && (
           <Text style={s.recruiting}>RECRUITING PLAYERS</Text>
         )}
       </View>
+
+      {kind === "field" && amenities.length > 0 && (
+        <View style={s.card}>
+          <Text style={s.label}>AMENITIES</Text>
+          <View style={s.amenityWrap}>
+            {amenities.map((a) => (
+              <View key={a} style={s.amenityTag}>
+                <Text style={s.amenityTagText}>{AMENITY_LABELS[a] || a}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {kind === "field" && fieldEvents.length > 0 && (
+        <View style={s.card}>
+          <Text style={s.label}>UPCOMING EVENTS HERE</Text>
+          {fieldEvents.map((e) => (
+            <View key={e.id} style={s.eventRow}>
+              <Text style={s.eventTitle} numberOfLines={1}>{e.title}</Text>
+              <Text style={s.eventDate}>
+                {new Date(e.startsAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {kind === "field" && !data.claimedById && (
+        <View style={[s.card, s.claimCard]}>
+          <Text style={s.label}>IS THIS YOUR FIELD?</Text>
+          <Text style={s.claimBody}>
+            Claim this listing to manage it as a free storefront — post announcements, keep hours and contact
+            info current, and promote events straight to the players who follow you.
+          </Text>
+          {claimSent ? (
+            <Text style={s.claimSentText}>Claim request sent — an admin will review it shortly.</Text>
+          ) : showClaimForm ? (
+            <View style={s.announceForm}>
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="Tell us how you're connected to this field (optional)"
+                placeholderTextColor="#5A655F"
+                value={claimNote}
+                onChangeText={setClaimNote}
+                multiline
+                numberOfLines={3}
+              />
+              <Pressable
+                style={[s.postBtn, claiming && s.postBtnDisabled]}
+                onPress={submitClaim}
+                disabled={claiming}
+              >
+                {claiming ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.postBtnText}>Submit claim request</Text>}
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable style={s.postBtn} onPress={() => setShowClaimForm(true)}>
+              <Text style={s.postBtnText}>Claim this field</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       <View style={s.card}>
         <View style={s.announceHeader}>
@@ -285,6 +394,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  banner: { width: "100%", height: 180, borderRadius: 14, backgroundColor: "#121819", marginBottom: 18 },
   kicker: {
     color: "#A8C84A",
     fontSize: 9,
@@ -364,4 +474,20 @@ const s = StyleSheet.create({
   announceTitle: { color: "#F3F1E8", fontSize: 14, fontWeight: "800" },
   announceBody: { color: "#B8C1BC", fontSize: 13, marginTop: 4, lineHeight: 19 },
   announceTime: { color: "#5A655F", fontSize: 10, marginTop: 6 },
+  amenityWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  amenityTag: {
+    backgroundColor: "rgba(168,200,74,.1)",
+    borderWidth: 1,
+    borderColor: "rgba(168,200,74,.3)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  amenityTagText: { color: "#A8C84A", fontSize: 11, fontWeight: "800" },
+  eventRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#29322F" },
+  eventTitle: { color: "#F3F1E8", fontSize: 13, fontWeight: "800", flex: 1, marginRight: 10 },
+  eventDate: { color: "#A8C84A", fontSize: 11, fontWeight: "900" },
+  claimCard: { borderColor: "rgba(168,200,74,.35)" },
+  claimBody: { color: "#B8C1BC", fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  claimSentText: { color: "#A8C84A", fontSize: 13, fontWeight: "800" },
 });

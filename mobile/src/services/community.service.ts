@@ -3,9 +3,11 @@ import { apiClient } from './api';
 export type GearItem={id:string;name:string;category:string;manufacturer?:string;model?:string;color?:string;condition?:string;notes?:string;serviceDueAt?:string};
 export type Gearbag={id:string;name:string;description?:string;visibility:string;isPrimary:boolean;items:GearItem[]};
 export type Team={id:string;slug:string;name:string;teamType:string;description?:string;city?:string;region?:string;country?:string;isRecruiting:boolean;bannerUrl?:string;createdAt?:string};
-export type Organization={id:string;slug:string;name:string;type:string;description?:string;city?:string;region?:string;country?:string;isVerified:boolean;images?:string[];details?:Record<string,unknown>;claimedById?:string;followerCount?:number};
+export type Organization={id:string;slug:string;name:string;type:string;description?:string;city?:string;region?:string;country?:string;address?:string;latitude?:number;longitude?:number;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;isVerified:boolean;images?:string[];details?:Record<string,unknown>;claimedById?:string;followerCount?:number};
 export type Event={id:string;slug:string;title:string;eventType:string;description:string;startsAt:string;endsAt:string;city?:string;region?:string;costCents?:number;capacity?:number;bannerUrl?:string;status:string;organizerId?:string};
 export type Announcement={id:string;sourceType:'organization'|'event'|'team';sourceId:string;authorId:string;title:string;body:string;expiresAt?:string;createdAt:string;sourceName?:string;sourceSlug?:string};
+export type OrganizationClaim={id:string;organizationId:string;userId:string;note?:string;status:string;createdAt:string};
+export type Paginated<T>={items:T[];total:number;page:number;totalPages:number};
 export type Conversation={id:string;type:string;subject?:string;lastMessageAt?:string;createdAt:string};
 export type Message={id:string;conversationId:string;senderId:string;body:string;createdAt:string};
 export type Notification={id:string;type:string;title:string;body:string;actionUrl?:string;readAt?:string;createdAt:string};
@@ -17,8 +19,15 @@ export const communityService={
   async updateGearItem(id:string,data:Partial<GearItem>){return (await apiClient.patch(`/gearbags/items/${id}`,data)).data},
   async archiveGearItem(id:string){return (await apiClient.post(`/gearbags/items/${id}/archive`)).data},
   async teams(){return (await apiClient.get<Team[]>('/teams')).data}, async applyTeam(id:string,message?:string){return (await apiClient.post(`/teams/${id}/applications`,{message})).data},
-  async organizations(){return (await apiClient.get<Organization[]>('/organizations')).data},
+  async organizations(type?:string){return (await apiClient.get<Organization[]>('/organizations',{params:{type}})).data},
+  async organizationsPaginated(params:{type?:string;page:number;limit?:number}){return (await apiClient.get<Paginated<Organization>>('/organizations',{params})).data},
+  async organizationsInBounds(bbox:{west:number;south:number;east:number;north:number},type?:string){return (await apiClient.get<Organization[]>('/organizations',{params:{type,bbox:`${bbox.west},${bbox.south},${bbox.east},${bbox.north}`}})).data},
   async organization(slug:string){return (await apiClient.get<Organization>(`/organizations/${slug}`)).data},
+  async organizationEvents(id:string){return (await apiClient.get<Event[]>(`/organizations/${id}/events`)).data},
+  async requestOrganizationClaim(id:string,note?:string){return (await apiClient.post<OrganizationClaim>(`/organizations/${id}/claim`,{note})).data},
+  async organizationClaims(){return (await apiClient.get<OrganizationClaim[]>('/organizations/claims')).data},
+  async decideOrganizationClaim(id:string,status:'approved'|'declined'){return (await apiClient.patch<OrganizationClaim>(`/organizations/claims/${id}`,{status})).data},
+  async importOsmFields(bbox:string){return (await apiClient.post<{candidates:number;created:number;updated:number;skipped:number}>('/organizations/import-osm',{bbox})).data},
   async events(){return (await apiClient.get<Event[]>('/events')).data}, async rsvp(id:string,status:'interested'|'going'|'not_going'){return (await apiClient.post(`/events/${id}/rsvp`,{status})).data},
   async event(slug:string){return (await apiClient.get<Event>(`/events/${slug}`)).data},
   async team(slug:string){return (await apiClient.get<Team>(`/teams/${slug}`)).data},
