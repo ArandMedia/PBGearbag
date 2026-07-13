@@ -61,6 +61,7 @@ const icons: Record<string, string> = {
   "Field Feed": "videocam-outline",
   Marketplace: "pricetags-outline",
   Discover: "compass-outline",
+  Map: "map-outline",
   Messages: "chatbubbles-outline",
   Gearbag: "briefcase-outline",
   Profile: "person-outline",
@@ -181,6 +182,11 @@ function MainDrawer() {
       <Drawer.Screen name="Field Feed" component={FieldFeedScreen} />
       <Drawer.Screen name="Marketplace" component={MarketplaceFeedScreen} />
       <Drawer.Screen name="Discover" component={DiscoverScreen} />
+      <Drawer.Screen
+        name="Map"
+        component={FieldsMapScreen}
+        options={{ title: "Fields Map" }}
+      />
       <Drawer.Screen name="Messages" component={MessagesScreen} />
       <Drawer.Screen
         name="Gearbag"
@@ -323,11 +329,6 @@ function MainStack() {
         name="CommunityEntity"
         component={CommunityEntityScreen}
         options={detailOptions("Community")}
-      />
-      <Stack.Screen
-        name="FieldsMap"
-        component={FieldsMapScreen}
-        options={detailOptions("Fields Map")}
       />
     </Stack.Navigator>
   );

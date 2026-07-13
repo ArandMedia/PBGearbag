@@ -668,7 +668,7 @@ export default function DiscoverScreen({ navigation }: any) {
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
           {mode === "fields" && (
-            <Pressable onPress={() => navigation.getParent()?.navigate("FieldsMap")}>
+            <Pressable onPress={() => navigation.navigate("Map")}>
               <Text style={s.clear}>MAP VIEW</Text>
             </Pressable>
           )}
