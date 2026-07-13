@@ -122,6 +122,22 @@ export class AuthService {
     await this.usersService.applyPendingEmailChange(row.userId,user.pendingEmail);
     return{message:'Email address updated'};
   }
+  async changeUsername(userId:string,newUsername:string){
+    const user=await this.usersService.findById(userId);
+    if(!user)throw new UnauthorizedException('User not found');
+    const normalized=newUsername.toLowerCase();
+    if(normalized===user.username)throw new ConflictException('That is already your handle');
+    if(user.usernameChangedAt){
+      const daysSince=(Date.now()-new Date(user.usernameChangedAt).getTime())/86400000;
+      if(daysSince<90){
+        const daysLeft=Math.ceil(90-daysSince);
+        throw new ConflictException(`You can change your handle again in ${daysLeft} day${daysLeft===1?'':'s'}`);
+      }
+    }
+    if(await this.usersService.findByUsername(normalized))throw new ConflictException('That handle is already taken');
+    await this.usersService.updateUsername(userId,normalized);
+    return{message:'Handle updated'};
+  }
 
   private async startSession(user: User, context: SessionContext): Promise<AuthResponse> {
     const session = await this.sessions.save(this.sessions.create({

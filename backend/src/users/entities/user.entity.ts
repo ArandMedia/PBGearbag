@@ -142,6 +142,9 @@ export class User {
   @Column({ name: "theme_color", nullable: true })
   themeColor?: string;
 
+  @Column({ name: "username_changed_at", type: "timestamptz", nullable: true })
+  usernameChangedAt?: Date;
+
   @BeforeInsert()
   @BeforeUpdate()
   emailToLowerCase() {

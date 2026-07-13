@@ -83,6 +83,33 @@ export default function AccountSettingsScreen({ navigation }: any) {
     }
   };
 
+  // Change handle (username)
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [usernameBusy, setUsernameBusy] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const daysSinceHandleChange = user?.usernameChangedAt
+    ? (Date.now() - new Date(user.usernameChangedAt).getTime()) / 86400000
+    : Infinity;
+  const handleCooldownDaysLeft = Math.max(0, Math.ceil(90 - daysSinceHandleChange));
+  const canChangeHandle = handleCooldownDaysLeft === 0;
+
+  const changeUsername = async () => {
+    const next = usernameDraft.trim().toLowerCase();
+    if (!next) return;
+    setUsernameBusy(true);
+    setUsernameError(null);
+    try {
+      await authService.changeUsername(next);
+      await refreshUser();
+      setUsernameDraft("");
+      Alert.alert("Handle updated", `You're now @${next}.`);
+    } catch (err: any) {
+      setUsernameError(err.response?.data?.error?.message || err.response?.data?.message || "Could not change handle.");
+    } finally {
+      setUsernameBusy(false);
+    }
+  };
+
   // Change password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -261,6 +288,40 @@ export default function AccountSettingsScreen({ navigation }: any) {
             />
           ))}
         </View>
+      </Section>
+
+      <Section title="HANDLE">
+        <Text style={s.label}>Your handle</Text>
+        <Text style={s.currentValue}>@{user.username}</Text>
+        {canChangeHandle ? (
+          <>
+            <Text style={s.hint}>
+              You can change this once every 90 days — choose carefully.
+            </Text>
+            <Text style={[s.label, { marginTop: 14 }]}>New handle</Text>
+            <TextInput
+              style={s.input}
+              value={usernameDraft}
+              onChangeText={setUsernameDraft}
+              placeholder="newhandle"
+              placeholderTextColor="#5f6972"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {usernameError && <Text style={s.errorText}>{usernameError}</Text>}
+            <Pressable
+              style={[s.primaryBtn, { backgroundColor: TURF }, !usernameDraft.trim() && s.dangerBtnDisabled]}
+              onPress={changeUsername}
+              disabled={usernameBusy || !usernameDraft.trim()}
+            >
+              {usernameBusy ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.primaryBtnText}>Save handle</Text>}
+            </Pressable>
+          </>
+        ) : (
+          <Text style={s.hint}>
+            You can change your handle again in {handleCooldownDaysLeft} day{handleCooldownDaysLeft === 1 ? "" : "s"}.
+          </Text>
+        )}
       </Section>
 
       <Section title="EMAIL & PASSWORD">

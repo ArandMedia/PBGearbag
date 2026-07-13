@@ -98,6 +98,7 @@ export class UsersService {
   async setPendingEmail(id:string,pendingEmail:string):Promise<void>{await this.usersRepository.update(id,{pendingEmail})}
   async updateMessagePermission(id:string,messagePermission:MessagePermission):Promise<void>{await this.usersRepository.update(id,{messagePermission})}
   async applyPendingEmailChange(id:string,email:string):Promise<void>{await this.usersRepository.update(id,{email,pendingEmail:null as any})}
+  async updateUsername(id:string,username:string):Promise<void>{await this.usersRepository.update(id,{username,usernameChangedAt:new Date()})}
 
   async remove(id: string): Promise<void> {
     // An early synchronize:true deploy (before this project switched to

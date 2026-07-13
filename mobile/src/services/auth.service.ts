@@ -26,6 +26,7 @@ export interface User {
   pendingEmail?: string;
   messagePermission?: "everyone" | "following" | "nobody";
   themeColor?: string;
+  usernameChangedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -205,6 +206,9 @@ class AuthService {
   }
   async confirmEmailChange(token: string): Promise<void> {
     await apiClient.post("/auth/confirm-email-change", { token });
+  }
+  async changeUsername(username: string): Promise<{ message: string }> {
+    return (await apiClient.post("/auth/change-username", { username })).data;
   }
   async updateSettings(data: { messagePermission: string }): Promise<void> {
     await apiClient.patch("/users/settings", data);
