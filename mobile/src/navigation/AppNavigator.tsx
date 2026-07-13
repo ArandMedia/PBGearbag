@@ -50,7 +50,6 @@ import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
 import FollowListScreen from "../screens/FollowListScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
-import FieldsMapScreen from "../screens/FieldsMapScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
@@ -63,7 +62,6 @@ const icons: Record<string, string> = {
   "Field Feed": "videocam-outline",
   Marketplace: "pricetags-outline",
   Discover: "compass-outline",
-  Map: "map-outline",
   Messages: "chatbubbles-outline",
   Gearbag: "briefcase-outline",
   Profile: "person-outline",
@@ -185,11 +183,6 @@ function MainDrawer() {
       <Drawer.Screen name="Field Feed" component={FieldFeedScreen} />
       <Drawer.Screen name="Marketplace" component={MarketplaceFeedScreen} />
       <Drawer.Screen name="Discover" component={DiscoverScreen} />
-      <Drawer.Screen
-        name="Map"
-        component={FieldsMapScreen}
-        options={{ title: "Fields Map" }}
-      />
       <Drawer.Screen name="Messages" component={MessagesScreen} />
       <Drawer.Screen
         name="Gearbag"

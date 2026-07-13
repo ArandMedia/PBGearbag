@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,8 +21,10 @@ import {
 import { paintballAmenities, paintballPlaceTypes } from "../constants/paintball";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { hexToRgba } from "../utils/color";
+import OrganizationsMap from "../components/OrganizationsMap";
 
 type Mode = "events" | "fields" | "teams";
+type FieldsView = "list" | "map";
 type DateFilter = "all" | "30" | "90";
 type PriceFilter = "all" | "free" | "paid";
 const paintballEventTypes = [
@@ -99,6 +102,7 @@ export default function DiscoverScreen({ navigation }: any) {
   const [minEventPrice, setMinEventPrice] = useState("");
   const [maxEventPrice, setMaxEventPrice] = useState("");
   const [eventSort, setEventSort] = useState<"soonest" | "price">("soonest");
+  const [fieldsView, setFieldsView] = useState<FieldsView>("list");
   const [fieldType, setFieldType] = useState("all");
   const [verified, setVerified] = useState(false);
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -615,10 +619,21 @@ export default function DiscoverScreen({ navigation }: any) {
           {resultCount} {mode.toUpperCase()} FOUND
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-          {mode === "fields" && (
-            <Pressable onPress={() => navigation.navigate("Map")}>
-              <Text style={s.clear}>MAP VIEW</Text>
-            </Pressable>
+          {mode === "fields" && Platform.OS === "web" && (
+            <View style={s.viewToggle}>
+              <Pressable
+                style={[s.viewToggleBtn, fieldsView === "list" && { backgroundColor: LIME, borderColor: LIME }]}
+                onPress={() => setFieldsView("list")}
+              >
+                <Text style={[s.viewToggleText, fieldsView === "list" && s.viewToggleTextOn]}>LIST</Text>
+              </Pressable>
+              <Pressable
+                style={[s.viewToggleBtn, fieldsView === "map" && { backgroundColor: LIME, borderColor: LIME }]}
+                onPress={() => setFieldsView("map")}
+              >
+                <Text style={[s.viewToggleText, fieldsView === "map" && s.viewToggleTextOn]}>MAP</Text>
+              </Pressable>
+            </View>
           )}
           <Pressable onPress={reset}>
             <Text style={s.clear}>RESET FILTERS</Text>
@@ -682,7 +697,16 @@ export default function DiscoverScreen({ navigation }: any) {
             </View>
           </Pressable>
         ))}
+      {mode === "fields" && fieldsView === "map" && (
+        <OrganizationsMap
+          organizations={filteredFields}
+          onSelect={(f) =>
+            navigation.getParent()?.navigate("CommunityEntity", { kind: "field", slug: f.slug })
+          }
+        />
+      )}
       {mode === "fields" &&
+        fieldsView === "list" &&
         filteredFields.map((f) => (
           <Pressable
             style={s.row}
@@ -725,7 +749,7 @@ export default function DiscoverScreen({ navigation }: any) {
       {mode === "teams" &&
         filteredTeams.map((t) => (
           <Pressable
-            style={s.row}
+            style={[s.row, s.teamRow, t.isRecruiting && s.teamRowRecruiting]}
             key={t.id}
             onPress={() =>
               navigation
@@ -733,24 +757,25 @@ export default function DiscoverScreen({ navigation }: any) {
                 ?.navigate("CommunityEntity", { kind: "team", slug: t.slug })
             }
           >
-            <View style={s.rowIcon}>
-              <Text style={[s.rowIconText, { color: LIME }]}>
-                {t.name.slice(0, 2).toUpperCase()}
-              </Text>
+            <View style={s.teamAvatar}>
+              <Text style={s.teamAvatarText}>{t.name.slice(0, 2).toUpperCase()}</Text>
             </View>
             <View style={s.rowBody}>
               <View style={s.nameRow}>
                 <Text style={s.rowTitle}>{t.name}</Text>
-                {t.isRecruiting && <Text style={s.recruiting}>RECRUITING</Text>}
+                <View style={s.teamTypeBadge}>
+                  <Text style={s.teamTypeBadgeText}>{t.teamType.replace(/_/g, " ")}</Text>
+                </View>
+                {t.isRecruiting && <Text style={s.recruiting}>● RECRUITING</Text>}
               </View>
               <Text style={s.body}>{t.description}</Text>
               <Text style={s.place}>
-                ⌖ {[t.city, t.region].filter(Boolean).join(", ")} • {t.teamType}
+                ⌖ {[t.city, t.region].filter(Boolean).join(", ") || "Location not listed"}
               </Text>
             </View>
             {t.isRecruiting && (
               <Pressable
-                style={s.secondary}
+                style={s.teamApplyBtn}
                 onPress={async () => {
                   await communityService.applyTeam(
                     t.id,
@@ -762,12 +787,12 @@ export default function DiscoverScreen({ navigation }: any) {
                   );
                 }}
               >
-                <Text style={s.secondaryText}>APPLY</Text>
+                <Text style={s.teamApplyBtnText}>APPLY TO ROSTER</Text>
               </Pressable>
             )}
           </Pressable>
         ))}
-      {resultCount === 0 && (
+      {resultCount === 0 && !(mode === "fields" && fieldsView === "map") && (
         <View style={s.empty}>
           <Text style={[s.emptyIcon, { color: LIME }]}>⌖</Text>
           <Text style={s.emptyTitle}>Nothing matches those filters yet.</Text>
@@ -984,6 +1009,16 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
   },
   clear: { color: "#E8743B", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  viewToggle: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#303A40",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  viewToggleBtn: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "transparent" },
+  viewToggleText: { color: "#8E999F", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
+  viewToggleTextOn: { color: "#0B0F0D" },
   feature: {
     minHeight: 400,
     borderRadius: 23,
@@ -1079,6 +1114,35 @@ const s = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1,
   },
+  teamRow: { borderColor: "#2E2A25" },
+  teamRowRecruiting: { borderColor: "rgba(255,150,83,.4)" },
+  teamAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#26201a",
+    borderWidth: 1,
+    borderColor: "#4a3626",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teamAvatarText: { color: "#FF9653", fontWeight: "900", fontSize: 14 },
+  teamTypeBadge: {
+    borderWidth: 1,
+    borderColor: "#3A4045",
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  teamTypeBadgeText: { color: "#AEB7BC", fontSize: 8, fontWeight: "900", letterSpacing: 0.6, textTransform: "capitalize" },
+  teamApplyBtn: {
+    backgroundColor: "#FF9653",
+    paddingHorizontal: 15,
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignSelf: "center",
+  },
+  teamApplyBtnText: { color: "#211408", fontSize: 9, fontWeight: "900", letterSpacing: 0.5 },
   arrow: { color: DEFAULT_ACCENT, fontSize: 20 },
   detailTags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 9 },
   detailTag: {

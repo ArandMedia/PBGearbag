@@ -1,6 +1,5 @@
-// Shared between DiscoverScreen's fields filter and FieldsMapScreen's map
-// filter so amenity tokens stay in sync with what OrganizationClaim.details
-// (and the OSM importer's amenity mapping) actually stores.
+// Amenity tokens stay in sync with what OrganizationClaim.details (and the
+// OSM importer's amenity mapping) actually stores.
 export const paintballAmenities = [
   ["rentals", "Rental equipment"],
   ["beginner", "Beginner friendly"],
@@ -40,8 +39,7 @@ export const paintballAmenities = [
   ["custom work", "Custom work"],
 ] as const;
 
-// Mirrors backend OrganizationType — shared between DiscoverScreen's place
-// filter and FieldsMapScreen's map type filter.
+// Mirrors backend OrganizationType — drives DiscoverScreen's place filter.
 export const paintballPlaceTypes = [
   ["field", "Paintball field"],
   ["retailer", "Retailer / pro shop"],

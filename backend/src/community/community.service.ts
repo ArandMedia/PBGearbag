@@ -57,7 +57,11 @@ export class CommunityService {
       const [items,total]=await q.orderBy('org.name','ASC').skip(skip).take(take).getManyAndCount();
       return {items,total,page:page||1,totalPages:Math.ceil(total/take)};
     }
-    return q.orderBy('org.name','ASC').take(200).getMany();
+    // Discover's merged list/map view loads the whole directory up front
+    // (no bbox) so switching views shows the same result set — this is a
+    // bounded, niche directory (low thousands at most), not a general
+    // business listing, so a flat higher cap is simpler than pagination here.
+    return q.orderBy('org.name','ASC').take(2000).getMany();
   }
   async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
   async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
