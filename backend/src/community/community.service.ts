@@ -4,12 +4,13 @@ import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
 import { MessagePermission, User } from '../users/entities/user.entity';
 import { SocialService } from '../social/social.service';
+import { BillingService } from '../billing/billing.service';
 import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
 import { importOsmFields as runOsmImport } from './osm-import.util';
 
 @Injectable()
 export class CommunityService {
-  constructor(private readonly db:DataSource, private readonly social:SocialService,
+  constructor(private readonly db:DataSource, private readonly social:SocialService, private readonly billing:BillingService,
     @InjectRepository(Gearbag) private gearbags:Repository<Gearbag>, @InjectRepository(GearItem) private gearItems:Repository<GearItem>,
     @InjectRepository(Team) private teams:Repository<Team>, @InjectRepository(TeamMember) private teamMembers:Repository<TeamMember>, @InjectRepository(TeamApplication) private applications:Repository<TeamApplication>,
     @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(OrganizationFollow) private orgFollows:Repository<OrganizationFollow>, @InjectRepository(OrganizationClaim) private orgClaims:Repository<OrganizationClaim>,
@@ -233,8 +234,8 @@ export class CommunityService {
     return [];
   }
 
-  listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED,moderationStatus:ApplicationStatus.APPROVED},order:{startsAt:'ASC'}})}
-  getEvent(slug:string){return this.events.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
+  listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED,moderationStatus:ApplicationStatus.APPROVED,teamId:IsNull()},order:{startsAt:'ASC'}})}
+  getEvent(slug:string){return this.events.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED,teamId:IsNull()}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
   async createEvent(userId:string,data:Partial<CommunityEvent>){const slug=await this.uniqueSlug(this.events,data.title||'event');return this.events.save(this.events.create({...data,slug,organizerId:userId,status:EventStatus.DRAFT,moderationStatus:ApplicationStatus.PENDING}))}
   async updateEvent(userId:string,id:string,data:Partial<CommunityEvent>){
     const event=await this.events.findOneBy({id});
@@ -262,6 +263,54 @@ export class CommunityService {
   }
   async rsvpEvent(userId:string,eventId:string,status:RsvpStatus,visibility=Visibility.MEMBERS){const event=await this.events.findOneBy({id:eventId});if(!event||event.status!==EventStatus.PUBLISHED)throw new NotFoundException('Published event not found');let rsvp=await this.rsvps.findOne({where:{eventId,userId}});if(!rsvp)rsvp=this.rsvps.create({eventId,userId,status,visibility});else Object.assign(rsvp,{status,visibility});return this.rsvps.save(rsvp)}
   async myUpcomingEvents(userId:string,limit=5){const going=await this.rsvps.find({where:{userId,status:RsvpStatus.GOING}});if(!going.length)return [];return this.events.find({where:{id:In(going.map(x=>x.eventId)),status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:limit})}
+
+  // Team practices are events scoped private to a roster — same title/time
+  // range/RSVP shape as a public event (reuses CommunityEvent + EventRsvp
+  // rather than a parallel entity), but they skip the public moderation
+  // queue entirely (teamId:IsNull() keeps them out of listEvents/getEvent)
+  // and are gated on the team OWNER holding an active Pro subscription,
+  // not the scheduler's own billing status.
+  async createTeamPractice(userId:string,teamId:string,data:{title:string;description?:string;startsAt:string|Date;endsAt:string|Date;timezone:string;city?:string;region?:string}){
+    await this.requireTeamManager(userId,teamId);
+    const team=await this.teams.findOneBy({id:teamId});
+    if(!team)throw new NotFoundException('Team not found');
+    const {isPro}=await this.billing.getStatus(team.ownerId);
+    if(!isPro)throw new ForbiddenException('Team scheduling requires the team owner to have an active Pro subscription');
+    const slug=await this.uniqueSlug(this.events,data.title||'practice');
+    const practice=await this.events.save(this.events.create({
+      ...data,
+      description:data.description||'',
+      slug,
+      teamId,
+      organizerId:userId,
+      eventType:'practice',
+      status:EventStatus.PUBLISHED,
+      moderationStatus:ApplicationStatus.APPROVED,
+    }));
+    const audience=(await this.announcementAudience('team',teamId)).filter(uid=>uid!==userId);
+    if(audience.length){
+      const actor=await this.actorName(userId);
+      await this.notifications.save(audience.map(uid=>this.notifications.create({
+        userId:uid,
+        type:'team_practice_scheduled',
+        title:`New ${team.name} practice`,
+        body:`${actor} scheduled "${practice.title}" for ${new Date(practice.startsAt).toLocaleDateString()}.`,
+        data:{teamId,eventId:practice.id},
+      })));
+    }
+    return practice;
+  }
+  async listTeamPractices(userId:string,teamId:string){
+    const member=await this.teamMembers.findOne({where:{teamId,userId,isActive:true}});
+    if(!member)throw new ForbiddenException('Team members only');
+    const team=await this.teams.findOneBy({id:teamId});
+    if(!team)throw new NotFoundException('Team not found');
+    const [items,{isPro:ownerIsPro}]=await Promise.all([
+      this.events.find({where:{teamId},order:{startsAt:'ASC'}}),
+      this.billing.getStatus(team.ownerId),
+    ]);
+    return {items,ownerIsPro};
+  }
 
   async listConversations(userId:string){const memberships=await this.participants.find({where:{userId,leftAt:IsNull()}});if(!memberships.length)return [];return this.conversations.find({where:{id:In(memberships.map(x=>x.conversationId))},order:{lastMessageAt:'DESC',createdAt:'DESC'}})}
   async createConversation(userId:string,type:any,participantIds:string[],subject?:string,contextId?:string){const ids=[...new Set([userId,...participantIds])];if(ids.length<2)throw new BadRequestException('A conversation needs another participant');

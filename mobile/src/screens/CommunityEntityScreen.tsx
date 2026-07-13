@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Alert } from "../utils/alert";
 import { Announcement, communityService, Event } from "../services/community.service";
+import { billingService } from "../services/billing.service";
 import { useAuth } from "../store/AuthContext";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { hexToRgba } from "../utils/color";
@@ -85,6 +86,16 @@ export default function CommunityEntityScreen({ route }: any) {
   const [claimNote, setClaimNote] = useState("");
   const [claiming, setClaiming] = useState(false);
   const [claimSent, setClaimSent] = useState(false);
+  const [practices, setPractices] = useState<Event[]>([]);
+  const [practicesOwnerIsPro, setPracticesOwnerIsPro] = useState(false);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [practiceTitle, setPracticeTitle] = useState("");
+  const [practiceStart, setPracticeStart] = useState("");
+  const [practiceEnd, setPracticeEnd] = useState("");
+  const [practiceDescription, setPracticeDescription] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [practiceGoing, setPracticeGoing] = useState<Record<string, boolean>>({});
+  const [practiceRsvpBusy, setPracticeRsvpBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const load =
@@ -109,7 +120,18 @@ export default function CommunityEntityScreen({ route }: any) {
     if (kind === "team") {
       communityService
         .teamMembership(data.id)
-        .then((m) => setTeamRole(m.role))
+        .then((m) => {
+          setTeamRole(m.role);
+          if (m.role) {
+            communityService
+              .teamPractices(data.id)
+              .then(({ items, ownerIsPro }) => {
+                setPractices(items);
+                setPracticesOwnerIsPro(ownerIsPro);
+              })
+              .catch(() => {});
+          }
+        })
         .catch(() => {});
     }
   }, [data?.id, kind]);
@@ -185,6 +207,81 @@ export default function CommunityEntityScreen({ route }: any) {
       );
     } finally {
       setClaiming(false);
+    }
+  };
+  const canManageTeam = kind === "team" && ["owner", "manager", "captain"].includes(teamRole || "");
+  const upgradeTeamPro = async () => {
+    try {
+      const url = await billingService.startCheckout("monthly");
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Couldn't start checkout", "Please try again in a moment.");
+    }
+  };
+  const requireProToSchedule = (): boolean => {
+    if (practicesOwnerIsPro) return true;
+    if (teamRole === "owner") {
+      Alert.alert(
+        "Team scheduling is a Pro feature",
+        "Scheduling practices for your team requires PBG Pro — $4/mo or $24/yr.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Upgrade", onPress: upgradeTeamPro },
+        ],
+      );
+    } else {
+      Alert.alert(
+        "Team scheduling is a Pro feature",
+        "This team's owner needs an active PBG Pro subscription to unlock scheduling. Ask them to upgrade.",
+      );
+    }
+    return false;
+  };
+  const openScheduleForm = () => {
+    if (!requireProToSchedule()) return;
+    setShowScheduleForm(true);
+  };
+  const submitPractice = async () => {
+    if (!practiceTitle.trim() || !practiceStart.trim() || !practiceEnd.trim()) return;
+    const startsAt = new Date(practiceStart);
+    const endsAt = new Date(practiceEnd);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      Alert.alert("Check the dates", "Start and end need to be valid dates, e.g. \"Aug 1, 2026 6:00 PM\".");
+      return;
+    }
+    setScheduling(true);
+    try {
+      const created = await communityService.createTeamPractice(data.id, {
+        title: practiceTitle.trim(),
+        description: practiceDescription.trim() || undefined,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      setPractices((prev) => [...prev, created].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()));
+      setPracticeTitle("");
+      setPracticeStart("");
+      setPracticeEnd("");
+      setPracticeDescription("");
+      setShowScheduleForm(false);
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't schedule practice",
+        e?.response?.data?.error?.message || e?.response?.data?.message || "Please try again in a moment.",
+      );
+    } finally {
+      setScheduling(false);
+    }
+  };
+  const togglePracticeRsvp = async (practiceId: string) => {
+    setPracticeRsvpBusy(practiceId);
+    try {
+      await communityService.rsvp(practiceId, practiceGoing[practiceId] ? "not_going" : "going");
+      setPracticeGoing((prev) => ({ ...prev, [practiceId]: !prev[practiceId] }));
+    } catch {
+      Alert.alert("Couldn't update", "Please try again in a moment.");
+    } finally {
+      setPracticeRsvpBusy(null);
     }
   };
   const amenities: string[] = Array.isArray((data.details as any)?.amenities) ? (data.details as any).amenities : [];
@@ -365,6 +462,91 @@ export default function CommunityEntityScreen({ route }: any) {
             <Pressable style={[s.postBtn, { backgroundColor: accent }]} onPress={() => setShowClaimForm(true)}>
               <Text style={s.postBtnText}>Claim this field</Text>
             </Pressable>
+          )}
+        </View>
+      )}
+
+      {kind === "team" && teamRole && (
+        <View style={s.card}>
+          <View style={s.announceHeader}>
+            <Text style={s.label}>TEAM SCHEDULE</Text>
+            {canManageTeam && (
+              <Pressable onPress={() => (showScheduleForm ? setShowScheduleForm(false) : openScheduleForm())}>
+                <Text style={[s.announceToggle, { color: accent }]}>{showScheduleForm ? "Cancel" : "+ Schedule practice"}</Text>
+              </Pressable>
+            )}
+          </View>
+          {canManageTeam && showScheduleForm && (
+            <View style={s.announceForm}>
+              <TextInput
+                style={s.input}
+                placeholder="Title (e.g. Tuesday scrimmage)"
+                placeholderTextColor="#5A655F"
+                value={practiceTitle}
+                onChangeText={setPracticeTitle}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Starts — e.g. Aug 1, 2026 6:00 PM"
+                placeholderTextColor="#5A655F"
+                value={practiceStart}
+                onChangeText={setPracticeStart}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Ends — e.g. Aug 1, 2026 8:00 PM"
+                placeholderTextColor="#5A655F"
+                value={practiceEnd}
+                onChangeText={setPracticeEnd}
+              />
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="Details (optional)"
+                placeholderTextColor="#5A655F"
+                value={practiceDescription}
+                onChangeText={setPracticeDescription}
+                multiline
+                numberOfLines={3}
+              />
+              <Pressable
+                style={[
+                  s.postBtn,
+                  { backgroundColor: accent },
+                  (!practiceTitle.trim() || !practiceStart.trim() || !practiceEnd.trim() || scheduling) && s.postBtnDisabled,
+                ]}
+                onPress={submitPractice}
+                disabled={!practiceTitle.trim() || !practiceStart.trim() || !practiceEnd.trim() || scheduling}
+              >
+                {scheduling ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.postBtnText}>Schedule</Text>}
+              </Pressable>
+            </View>
+          )}
+          {!practices.length ? (
+            <Text style={s.emptyAnnounce}>No practices scheduled yet.</Text>
+          ) : (
+            practices.map((p) => (
+              <View key={p.id} style={s.eventRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.eventTitle} numberOfLines={1}>{p.title}</Text>
+                  <Text style={[s.eventDate, { color: accent }]}>
+                    {new Date(p.startsAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </Text>
+                </View>
+                <Pressable
+                  style={[s.rsvpBtn, practiceGoing[p.id] && { backgroundColor: accent, borderColor: accent }]}
+                  onPress={() => togglePracticeRsvp(p.id)}
+                  disabled={practiceRsvpBusy === p.id}
+                >
+                  {practiceRsvpBusy === p.id ? (
+                    <ActivityIndicator size="small" color="#10140D" />
+                  ) : (
+                    <Text style={[s.rsvpBtnText, practiceGoing[p.id] && s.rsvpBtnTextActive]}>
+                      {practiceGoing[p.id] ? "GOING" : "I'M GOING"}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            ))
           )}
         </View>
       )}

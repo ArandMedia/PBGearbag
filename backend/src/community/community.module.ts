@@ -4,10 +4,11 @@ import { Announcement, AuditLog, CommunityEvent, Conversation, ConversationParti
 import { Listing } from '../marketplace/entities/listing.entity';
 import { User } from '../users/entities/user.entity';
 import { SocialModule } from '../social/social.module';
+import { BillingModule } from '../billing/billing.module';
 import { CommunityService } from './community.service';
 import { EventsController, GearbagsController, MarketplaceTrustController, MessagesController, NotificationsController, OrganizationsController, ProfileDataController, ReportsController, TeamsController } from './community.controller';
 
 export const communityEntities=[Gearbag,GearItem,Team,TeamMember,TeamApplication,Organization,OrganizationFollow,OrganizationClaim,CommunityEvent,EventRsvp,Conversation,ConversationParticipant,Message,ListingFavorite,ListingOffer,Review,Report,Notification,AuditLog,Announcement];
 
-@Module({imports:[TypeOrmModule.forFeature([...communityEntities,Listing,User]),SocialModule],providers:[CommunityService],controllers:[GearbagsController,TeamsController,OrganizationsController,EventsController,MessagesController,MarketplaceTrustController,NotificationsController,ReportsController,ProfileDataController],exports:[TypeOrmModule,CommunityService]})
+@Module({imports:[TypeOrmModule.forFeature([...communityEntities,Listing,User]),SocialModule,BillingModule],providers:[CommunityService],controllers:[GearbagsController,TeamsController,OrganizationsController,EventsController,MessagesController,MarketplaceTrustController,NotificationsController,ReportsController,ProfileDataController],exports:[TypeOrmModule,CommunityService]})
 export class CommunityModule {}

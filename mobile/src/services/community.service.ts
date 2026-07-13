@@ -4,7 +4,7 @@ export type GearItem={id:string;name:string;category:string;manufacturer?:string
 export type Gearbag={id:string;name:string;description?:string;visibility:string;isPrimary:boolean;items:GearItem[]};
 export type Team={id:string;slug:string;name:string;teamType:string;description?:string;city?:string;region?:string;country?:string;isRecruiting:boolean;bannerUrl?:string;createdAt?:string;moderationStatus?:string};
 export type Organization={id:string;slug:string;name:string;type:string;description?:string;city?:string;region?:string;country?:string;address?:string;latitude?:number;longitude?:number;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;isVerified:boolean;images?:string[];details?:Record<string,unknown>;claimedById?:string;followerCount?:number;moderationStatus?:string};
-export type Event={id:string;slug:string;title:string;eventType:string;description:string;startsAt:string;endsAt:string;city?:string;region?:string;costCents?:number;capacity?:number;bannerUrl?:string;status:string;organizerId?:string;moderationStatus?:string};
+export type Event={id:string;slug:string;title:string;eventType:string;description:string;startsAt:string;endsAt:string;city?:string;region?:string;costCents?:number;capacity?:number;bannerUrl?:string;status:string;organizerId?:string;moderationStatus?:string;teamId?:string};
 export type Announcement={id:string;sourceType:'organization'|'event'|'team';sourceId:string;authorId:string;title:string;body:string;expiresAt?:string;createdAt:string;sourceName?:string;sourceSlug?:string};
 export type OrganizationClaim={id:string;organizationId:string;userId:string;note?:string;status:string;createdAt:string};
 export type Paginated<T>={items:T[];total:number;page:number;totalPages:number};
@@ -19,6 +19,8 @@ export const communityService={
   async updateGearItem(id:string,data:Partial<GearItem>){return (await apiClient.patch(`/gearbags/items/${id}`,data)).data},
   async archiveGearItem(id:string){return (await apiClient.post(`/gearbags/items/${id}/archive`)).data},
   async teams(){return (await apiClient.get<Team[]>('/teams')).data}, async applyTeam(id:string,message?:string){return (await apiClient.post(`/teams/${id}/applications`,{message})).data},
+  async teamPractices(teamId:string){return (await apiClient.get<{items:Event[];ownerIsPro:boolean}>(`/teams/${teamId}/practices`)).data},
+  async createTeamPractice(teamId:string,data:{title:string;description?:string;startsAt:string;endsAt:string;timezone:string;city?:string;region?:string}){return (await apiClient.post<Event>(`/teams/${teamId}/practices`,data)).data},
   async pendingTeams(){return (await apiClient.get<Team[]>('/teams/pending')).data},
   async decideTeam(id:string,status:'approved'|'declined'){return (await apiClient.patch<Team>(`/teams/${id}/moderate`,{status})).data},
   async pendingEvents(){return (await apiClient.get<Event[]>('/events/pending')).data},

@@ -14,6 +14,7 @@ class ApplicationDto { @IsOptional() @IsString() message?:string }
 class ApplicationDecisionDto { @IsEnum(ApplicationStatus) status:ApplicationStatus }
 class OrganizationDto { @IsString() @IsNotEmpty() name:string; @IsEnum(OrganizationType) type:OrganizationType; @IsOptional() @IsString() description?:string; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string; @IsOptional() @IsString() country?:string; @IsOptional() @IsString() address?:string; @IsOptional() @IsString() websiteUrl?:string; @IsOptional() @IsObject() details?:Record<string,unknown> }
 class EventDto { @IsString() @IsNotEmpty() title:string; @IsString() eventType:string; @IsString() description:string; @IsDateString() startsAt:any; @IsDateString() endsAt:any; @IsString() timezone:string; @IsOptional() @IsEnum(EventStatus) status?:EventStatus; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string; @IsOptional() @IsString() country?:string; @IsOptional() @IsString() registrationUrl?:string; @IsOptional() @IsInt() @Min(0) costCents?:number; @IsOptional() @IsInt() @Min(1) capacity?:number; @IsOptional() @IsString() bannerUrl?:string }
+class TeamPracticeDto { @IsString() @IsNotEmpty() title:string; @IsOptional() @IsString() description?:string; @IsDateString() startsAt:any; @IsDateString() endsAt:any; @IsString() timezone:string; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string }
 class RsvpDto { @IsEnum(RsvpStatus) status:RsvpStatus; @IsOptional() @IsEnum(Visibility) visibility?:Visibility }
 class ConversationDto { @IsEnum(ConversationType) type:ConversationType; @IsArray() @IsString({each:true}) participantIds:string[]; @IsOptional() @IsString() subject?:string; @IsOptional() @IsString() contextId?:string }
 class MessageDto { @IsString() @IsNotEmpty() body:string; @IsOptional() @IsArray() @IsString({each:true}) attachments?:string[] }
@@ -51,6 +52,8 @@ export class TeamsController { constructor(private s:CommunityService){}
   @Get(':id/membership') async membership(@CurrentUser()u:User,@Param('id')id:string){const m=await this.s.teamMembership(u.id,id);return {role:m?.role||null}}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('team',id)}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'team',id,d)}
+  @Get(':id/practices') practices(@CurrentUser()u:User,@Param('id')id:string){return this.s.listTeamPractices(u.id,id)}
+  @Post(':id/practices') schedulePractice(@CurrentUser()u:User,@Param('id')id:string,@Body()d:TeamPracticeDto){return this.s.createTeamPractice(u.id,id,d)}
 }
 
 @Controller('organizations')

@@ -89,6 +89,7 @@ export class Organization {
 export class CommunityEvent {
   @PrimaryGeneratedColumn('uuid') id:string; @Index({unique:true}) @Column() slug:string; @Column() title:string;
   @Index() @Column({name:'organizer_id'}) organizerId:string; @Column({name:'organization_id',type:'uuid',nullable:true}) organizationId?:string;
+  @Index() @Column({name:'team_id',type:'uuid',nullable:true}) teamId?:string;
   @Column({name:'event_type'}) eventType:string; @Column({type:'enum',enum:EventStatus,default:EventStatus.DRAFT}) status:EventStatus;
   @Column({type:'text'}) description:string; @Column({type:'text',nullable:true}) rules?:string;
   @Column({name:'starts_at',type:'timestamptz'}) startsAt:Date; @Column({name:'ends_at',type:'timestamptz'}) endsAt:Date; @Column() timezone:string;
