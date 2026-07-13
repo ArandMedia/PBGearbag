@@ -238,7 +238,17 @@ export class CommunityService {
 
   listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED,moderationStatus:ApplicationStatus.APPROVED,teamId:IsNull()},order:{startsAt:'ASC'}})}
   getEvent(slug:string){return this.events.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED,teamId:IsNull()}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
-  async createEvent(userId:string,data:Partial<CommunityEvent>){const slug=await this.uniqueSlug(this.events,data.title||'event');return this.events.save(this.events.create({...data,slug,organizerId:userId,status:EventStatus.DRAFT,moderationStatus:ApplicationStatus.PENDING}))}
+  // Vetted partners (a claimed field's owner — the same admin-approved claim
+  // that gates tournament hosting) skip the moderation queue entirely for
+  // events tied to their own listing: that claim approval already was the
+  // staff review. Anyone else creating an event with no claimed-org tie
+  // still goes through the pending queue, since there's no other vetting
+  // for who they are.
+  async createEvent(userId:string,data:Partial<CommunityEvent>){
+    const slug=await this.uniqueSlug(this.events,data.title||'event');
+    const isVettedPartner=!!data.organizationId&&await this.organizations.exist({where:{id:data.organizationId,claimedById:userId}});
+    return this.events.save(this.events.create({...data,slug,organizerId:userId,status:EventStatus.DRAFT,moderationStatus:isVettedPartner?ApplicationStatus.APPROVED:ApplicationStatus.PENDING}));
+  }
   async updateEvent(userId:string,id:string,data:Partial<CommunityEvent>){
     const event=await this.events.findOneBy({id});
     if(!event)throw new NotFoundException('Event not found');
@@ -317,8 +327,11 @@ export class CommunityService {
   // Tournaments are CommunityEvents (eventType:'tournament') plus bracket
   // state. "Partner channel" = the caller already owns the hosting field
   // via the existing admin-approved claim flow — no separate partner
-  // role/table needed. Still goes through Phase 1's moderation queue like
-  // any other public event.
+  // role/table needed. That claim approval already *was* the staff review,
+  // so unlike a regular public event this goes live immediately — routing
+  // it through Phase 1's moderation queue too would mean a vetted partner
+  // still needs a human to greenlight every tournament, defeating the
+  // point of self-serve creation.
   async createTournament(userId:string,data:{organizationId:string;title:string;description?:string;startsAt:string|Date;endsAt:string|Date;timezone:string;city?:string;region?:string;format?:TournamentFormat;maxTeams?:number;registrationClosesAt?:string|Date}){
     const org=await this.organizations.findOneBy({id:data.organizationId});
     if(!org)throw new NotFoundException('Field not found');
@@ -328,7 +341,7 @@ export class CommunityService {
       const slug=await this.uniqueSlug(eventsRepo,data.title||'tournament');
       const event=await eventsRepo.save(eventsRepo.create({
         title:data.title,description:data.description||'',slug,organizerId:userId,organizationId:org.id,
-        eventType:'tournament',status:EventStatus.DRAFT,moderationStatus:ApplicationStatus.PENDING,
+        eventType:'tournament',status:EventStatus.PUBLISHED,moderationStatus:ApplicationStatus.APPROVED,
         startsAt:data.startsAt,endsAt:data.endsAt,timezone:data.timezone,city:data.city,region:data.region,
       }));
       const tournament=await tournamentsRepo.save(tournamentsRepo.create({

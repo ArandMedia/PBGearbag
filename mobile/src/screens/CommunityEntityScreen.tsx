@@ -570,7 +570,7 @@ export default function CommunityEntityScreen({ route }: any) {
             </Pressable>
           </View>
           {hostSent && (
-            <Text style={[s.claimSentText, { color: accent }]}>Tournament submitted — it'll go live once approved, and you can start the bracket from its event page once teams register.</Text>
+            <Text style={[s.claimSentText, { color: accent }]}>Tournament is live — teams can register now, and you can start the bracket from its event page once they do.</Text>
           )}
           {showHostForm && (
             <View style={s.announceForm}>
