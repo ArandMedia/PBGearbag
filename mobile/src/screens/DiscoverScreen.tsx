@@ -17,6 +17,7 @@ import {
   Organization,
   Team,
 } from "../services/community.service";
+import { paintballAmenities } from "../constants/paintball";
 
 type Mode = "events" | "fields" | "teams";
 type DateFilter = "all" | "30" | "90";
@@ -57,44 +58,6 @@ const paintballPlaceTypes = [
   ["outdoor_venue", "Outdoor venue"],
   ["community", "Club / community"],
   ["other", "Other paintball business"],
-] as const;
-const paintballAmenities = [
-  ["rentals", "Rental equipment"],
-  ["beginner", "Beginner friendly"],
-  ["low impact", "Low-impact paintball"],
-  ["kids", "Youth programs"],
-  ["air", "Air fills"],
-  ["4500", "4500 PSI fills"],
-  ["co2", "CO₂ fills"],
-  ["pro shop", "On-site pro shop"],
-  ["tech", "Tech services"],
-  ["repair", "Repairs"],
-  ["byop", "Bring your own paint"],
-  ["paint included", "Paint included"],
-  ["speedball", "Speedball field"],
-  ["woodsball", "Woodsball field"],
-  ["scenario", "Scenario field"],
-  ["indoor", "Indoor play"],
-  ["covered", "Covered staging"],
-  ["lights", "Night play / lights"],
-  ["chronograph", "Chronograph station"],
-  ["turf", "Turf field"],
-  ["food", "Food / concessions"],
-  ["restrooms", "Restrooms"],
-  ["parking", "Parking"],
-  ["camping", "Camping"],
-  ["showers", "Showers"],
-  ["wifi", "Wi-Fi"],
-  ["private parties", "Private parties"],
-  ["corporate", "Corporate groups"],
-  ["birthday", "Birthday packages"],
-  ["league play", "League play"],
-  ["tournaments", "Tournaments"],
-  ["wheelchair", "Accessible facilities"],
-  ["lodging", "Nearby lodging"],
-  ["shipping", "Shipping"],
-  ["online store", "Online store"],
-  ["custom work", "Custom work"],
 ] as const;
 function Chip({
   label,

@@ -1,15 +1,82 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { communityService, Organization } from "../services/community.service";
+import { paintballAmenities } from "../constants/paintball";
 
 const LIME = "#A8C84A";
+
+function matchesFilters(f: Organization, search: string, verifiedOnly: boolean, amenities: string[]) {
+  if (verifiedOnly && !f.isVerified) return false;
+  if (search.trim()) {
+    const hay = `${f.name} ${f.city || ""} ${f.region || ""} ${f.country || ""}`.toLowerCase();
+    if (!hay.includes(search.trim().toLowerCase())) return false;
+  }
+  if (amenities.length) {
+    const hay = JSON.stringify(f.details || {}).toLowerCase();
+    if (!amenities.every((a) => hay.includes(a))) return false;
+  }
+  return true;
+}
+
+function FilterBar({
+  search,
+  setSearch,
+  verifiedOnly,
+  setVerifiedOnly,
+  amenities,
+  toggleAmenity,
+  filtersOpen,
+  setFiltersOpen,
+  resultCount,
+}: any) {
+  return (
+    <View style={s.filterBar}>
+      <View style={s.searchRow}>
+        <TextInput
+          style={s.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search fields by name or city"
+          placeholderTextColor="#7b878f"
+        />
+        <Pressable style={[s.filterToggle, filtersOpen && s.filterToggleOn]} onPress={() => setFiltersOpen((v: boolean) => !v)}>
+          <Text style={[s.filterToggleText, filtersOpen && s.filterToggleTextOn]}>
+            FILTERS{amenities.length ? ` (${amenities.length})` : ""}
+          </Text>
+        </Pressable>
+      </View>
+      {filtersOpen && (
+        <View style={s.filterPanel}>
+          <Pressable style={[s.chip, verifiedOnly && s.chipOn]} onPress={() => setVerifiedOnly((v: boolean) => !v)}>
+            <Text style={[s.chipText, verifiedOnly && s.chipTextOn]}>Verified only</Text>
+          </Pressable>
+          <ScrollView style={s.amenityScroll}>
+            <View style={s.chipWrap}>
+              {paintballAmenities.map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  style={[s.chip, amenities.includes(value) && s.chipOn]}
+                  onPress={() => toggleAmenity(value)}
+                >
+                  <Text style={[s.chipText, amenities.includes(value) && s.chipTextOn]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+      <Text style={s.resultCount}>{resultCount} field{resultCount === 1 ? "" : "s"} match</Text>
+    </View>
+  );
+}
 
 // Leaflet is a DOM library — only safe/useful on web. Native falls back to
 // a plain list rather than pulling leaflet/react-leaflet into a native
 // bundle that has no window/DOM to render into.
-function FieldsListFallback({ navigation, fields, loading }: any) {
+function FieldsListFallback({ navigation, fields, loading, filterProps }: any) {
   return (
     <ScrollView style={s.page} contentContainerStyle={s.listContent}>
+      <FilterBar {...filterProps} />
       {loading ? (
         <ActivityIndicator color={LIME} style={{ marginTop: 40 }} />
       ) : (
@@ -96,6 +163,12 @@ if (Platform.OS === "web") {
 export default function FieldsMapScreen({ navigation }: any) {
   const [fields, setFields] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const toggleAmenity = (value: string) =>
+    setAmenities((prev) => (prev.includes(value) ? prev.filter((a) => a !== value) : [...prev, value]));
 
   const onBoundsChange = (bounds: any) => {
     setLoading(true);
@@ -118,20 +191,39 @@ export default function FieldsMapScreen({ navigation }: any) {
       .finally(() => setLoading(false));
   }, []);
 
+  const filtered = useMemo(
+    () => fields.filter((f) => matchesFilters(f, search, verifiedOnly, amenities)),
+    [fields, search, verifiedOnly, amenities],
+  );
+
+  const filterProps = {
+    search,
+    setSearch,
+    verifiedOnly,
+    setVerifiedOnly,
+    amenities,
+    toggleAmenity,
+    filtersOpen,
+    setFiltersOpen,
+    resultCount: filtered.length,
+  };
+
   if (Platform.OS !== "web" || !WebMap) {
-    return <FieldsListFallback navigation={navigation} fields={fields} loading={loading} />;
+    return <FieldsListFallback navigation={navigation} fields={filtered} loading={loading} filterProps={filterProps} />;
   }
 
   return (
     <View style={s.page}>
-      <WebMap navigation={navigation} onBoundsChange={onBoundsChange} fields={fields} />
+      <WebMap navigation={navigation} onBoundsChange={onBoundsChange} fields={filtered} />
+      <View style={s.overlayTop}>
+        <FilterBar {...filterProps} />
+      </View>
       {loading && (
         <View style={s.loadingPill}>
           <ActivityIndicator size="small" color={LIME} />
           <Text style={s.loadingPillText}>Loading fields...</Text>
         </View>
       )}
-      <Text style={s.count}>{fields.length} field{fields.length === 1 ? "" : "s"} in view</Text>
     </View>
   );
 }
@@ -144,7 +236,7 @@ const s = StyleSheet.create({
   listRowSub: { color: "#77827D", fontSize: 12, marginTop: 4 },
   loadingPill: {
     position: "absolute",
-    top: 16,
+    bottom: 16,
     left: 16,
     zIndex: 1000,
     flexDirection: "row",
@@ -158,19 +250,50 @@ const s = StyleSheet.create({
     paddingVertical: 8,
   },
   loadingPillText: { color: "#D6DDDA", fontSize: 12, fontWeight: "700" },
-  count: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    zIndex: 1000,
-    color: "#D6DDDA",
-    fontSize: 11,
-    fontWeight: "800",
-    backgroundColor: "rgba(6,9,10,.85)",
+  overlayTop: { position: "absolute", top: 16, left: 16, right: 16, zIndex: 1000 },
+  filterBar: {
+    backgroundColor: "rgba(10,14,15,.92)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,.14)",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 16,
+    padding: 12,
+    maxWidth: 520,
   },
+  searchRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "#171c20",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: "#fff",
+    borderWidth: 1,
+    borderColor: "#364047",
+  },
+  filterToggle: {
+    borderWidth: 1,
+    borderColor: "rgba(168,200,74,.4)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  filterToggleOn: { backgroundColor: LIME, borderColor: LIME },
+  filterToggleText: { color: LIME, fontSize: 10, fontWeight: "900" },
+  filterToggleTextOn: { color: "#10150d" },
+  filterPanel: { marginTop: 10 },
+  amenityScroll: { maxHeight: 160, marginTop: 8 },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
+    borderWidth: 1,
+    borderColor: "#364047",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 0,
+  },
+  chipOn: { backgroundColor: LIME, borderColor: LIME },
+  chipText: { color: "#D6DDDA", fontSize: 11, fontWeight: "700" },
+  chipTextOn: { color: "#10150d" },
+  resultCount: { color: "#77827D", fontSize: 11, marginTop: 10, fontWeight: "700" },
 });
