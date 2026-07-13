@@ -13,6 +13,7 @@ interface Props {
   // grows so the rendered "PB" stays close to the adjacent wordmark's
   // on-screen text height instead of ballooning with the icon.
   textSize?: number;
+  style?: object;
 }
 
 // A paint-splatter mark, replacing the old plain rounded square. The blob is
@@ -22,9 +23,9 @@ interface Props {
 // as nearby spikes, for the spray-paint look. "PB" sits centered in the
 // shape's solid core with a bold weight so it stays legible against
 // whatever fill color the user picks.
-export default function PBGLogo({ size = 40, color = "#A8C84A", ink = "#10150d", textSize = 30 }: Props) {
+export default function PBGLogo({ size = 40, color = "#A8C84A", ink = "#10150d", textSize = 30, style }: Props) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Svg width={size} height={size} viewBox="0 0 100 100" style={style}>
       <Circle cx={98} cy={10} r={3.5} fill={color} />
       <Circle cx={98} cy={45} r={3} fill={color} />
       <Circle cx={8} cy={82} r={5} fill={color} />

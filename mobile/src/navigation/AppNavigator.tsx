@@ -72,7 +72,7 @@ const icons: Record<string, string> = {
 function Brand({ color = DEFAULT_ACCENT }: { color?: string }) {
   return (
     <View style={styles.brand}>
-      <PBGLogo size={95} textSize={21} color={color} />
+      <PBGLogo size={95} textSize={21} color={color} style={{ marginRight: -16 }} />
       <View>
         <Text style={styles.brandName}>Gearbag</Text>
         <Text style={styles.brandTag}>THE PAINTBALL NETWORK</Text>
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#232B30",
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 5 },
+  brand: { flexDirection: "row", alignItems: "center" },
   brandName: {
     color: "#fff",
     fontSize: 20,

@@ -63,7 +63,7 @@ export default function LandingScreen({ navigation }: any) {
         contentContainerStyle={[s.content, compact && s.contentMobile]}
       >
         <View style={s.brand}>
-          <PBGLogo size={85} textSize={26} />
+          <PBGLogo size={85} textSize={26} style={{ marginRight: -14 }} />
           <Text style={s.brandText}>Gearbag</Text>
         </View>
         <Text style={s.kicker}>THE PAINTBALL NETWORK</Text>
@@ -174,7 +174,7 @@ const s = StyleSheet.create({
     paddingBottom: 70,
   },
   contentMobile: { padding: 20, paddingTop: 10 },
-  brand: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 18 },
+  brand: { flexDirection: "row", alignItems: "center", marginTop: 18 },
   brandText: {
     color: "#F5F7F8",
     fontWeight: "900",
