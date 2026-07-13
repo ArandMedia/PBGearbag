@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Alert } from '../utils/alert';
-import { communityService, Organization, OrganizationClaim, Report } from '../services/community.service';
+import { communityService, Event, Organization, OrganizationClaim, Report, Team } from '../services/community.service';
 
 export default function AdminScreen() {
   const [rows, setRows] = useState<Report[]>([]);
@@ -11,6 +11,11 @@ export default function AdminScreen() {
   const [bbox, setBbox] = useState('');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+
+  const [pendingTeams, setPendingTeams] = useState<Team[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
+  const [pendingSuggestions, setPendingSuggestions] = useState<Organization[]>([]);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
 
   const [quality, setQuality] = useState<{ total: number; missingContact: number; missingAddress: number; thinCount: number; thin: Organization[] } | null>(null);
   const [qualityLoading, setQualityLoading] = useState(true);
@@ -23,11 +28,17 @@ export default function AdminScreen() {
       communityService.reports(),
       communityService.organizationClaims(),
       communityService.organizations(),
+      communityService.pendingTeams(),
+      communityService.pendingEvents(),
+      communityService.pendingOrganizationSuggestions(),
     ])
-      .then(([reports, claimRows, orgRows]) => {
+      .then(([reports, claimRows, orgRows, teamRows, eventRows, suggestionRows]) => {
         setRows(reports);
         setClaims(claimRows);
         setOrgs(orgRows);
+        setPendingTeams(teamRows);
+        setPendingEvents(eventRows);
+        setPendingSuggestions(suggestionRows);
       })
       .finally(() => setLoading(false));
 
@@ -47,6 +58,42 @@ export default function AdminScreen() {
   const decideClaim = async (claimId: string, status: 'approved' | 'declined') => {
     await communityService.decideOrganizationClaim(claimId, status);
     await load();
+  };
+
+  const decideTeamSubmission = async (id: string, status: 'approved' | 'declined') => {
+    setDecidingId(id);
+    try {
+      await communityService.decideTeam(id, status);
+      await load();
+    } catch {
+      Alert.alert("Couldn't save", 'Please try again in a moment.');
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const decideEventSubmission = async (id: string, status: 'approved' | 'declined') => {
+    setDecidingId(id);
+    try {
+      await communityService.decideEvent(id, status);
+      await load();
+    } catch {
+      Alert.alert("Couldn't save", 'Please try again in a moment.');
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const decideSuggestion = async (id: string, status: 'approved' | 'declined') => {
+    setDecidingId(id);
+    try {
+      await communityService.decideOrganizationSuggestion(id, status);
+      await load();
+    } catch {
+      Alert.alert("Couldn't save", 'Please try again in a moment.');
+    } finally {
+      setDecidingId(null);
+    }
   };
 
   const runImport = async () => {
@@ -145,6 +192,114 @@ export default function AdminScreen() {
                     { text: 'Decline', onPress: () => decideClaim(c.id, 'declined') },
                   ])
                 }
+              >
+                <Text style={s.dismissText}>Decline</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))
+      )}
+
+      <Text style={s.sectionTitle}>Pending teams</Text>
+      {!pendingTeams.length ? (
+        <Text style={s.empty}>No teams awaiting review.</Text>
+      ) : (
+        pendingTeams.map((t) => (
+          <View style={s.card} key={t.id}>
+            <Text style={s.subject}>{t.name}</Text>
+            <Text style={s.body}>
+              {t.teamType} • {[t.city, t.region].filter(Boolean).join(', ') || 'No location'}
+            </Text>
+            {t.description ? <Text style={s.body}>{t.description}</Text> : null}
+            <View style={s.actions}>
+              <Pressable
+                style={s.resolve}
+                onPress={() => decideTeamSubmission(t.id, 'approved')}
+                disabled={decidingId === t.id}
+              >
+                {decidingId === t.id ? <ActivityIndicator size="small" color="#10150d" /> : <Text style={s.resolveText}>Approve</Text>}
+              </Pressable>
+              <Pressable
+                style={s.dismiss}
+                onPress={() =>
+                  Alert.alert('Decline team', `Decline "${t.name}"?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Decline', onPress: () => decideTeamSubmission(t.id, 'declined') },
+                  ])
+                }
+                disabled={decidingId === t.id}
+              >
+                <Text style={s.dismissText}>Decline</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))
+      )}
+
+      <Text style={s.sectionTitle}>Pending events</Text>
+      {!pendingEvents.length ? (
+        <Text style={s.empty}>No events awaiting review.</Text>
+      ) : (
+        pendingEvents.map((e) => (
+          <View style={s.card} key={e.id}>
+            <Text style={s.subject}>{e.title}</Text>
+            <Text style={s.body}>
+              {e.eventType} • {[e.city, e.region].filter(Boolean).join(', ') || 'No location'}
+            </Text>
+            <Text style={s.body}>{e.description}</Text>
+            <View style={s.actions}>
+              <Pressable
+                style={s.resolve}
+                onPress={() => decideEventSubmission(e.id, 'approved')}
+                disabled={decidingId === e.id}
+              >
+                {decidingId === e.id ? <ActivityIndicator size="small" color="#10150d" /> : <Text style={s.resolveText}>Approve</Text>}
+              </Pressable>
+              <Pressable
+                style={s.dismiss}
+                onPress={() =>
+                  Alert.alert('Decline event', `Decline "${e.title}"?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Decline', onPress: () => decideEventSubmission(e.id, 'declined') },
+                  ])
+                }
+                disabled={decidingId === e.id}
+              >
+                <Text style={s.dismissText}>Decline</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))
+      )}
+
+      <Text style={s.sectionTitle}>Pending field & vendor suggestions</Text>
+      {!pendingSuggestions.length ? (
+        <Text style={s.empty}>No suggested listings awaiting review.</Text>
+      ) : (
+        pendingSuggestions.map((o) => (
+          <View style={s.card} key={o.id}>
+            <Text style={s.subject}>{o.name}</Text>
+            <Text style={s.body}>
+              {o.type} • {[o.city, o.region].filter(Boolean).join(', ') || 'No location'}
+            </Text>
+            {o.description ? <Text style={s.body}>{o.description}</Text> : null}
+            <View style={s.actions}>
+              <Pressable
+                style={s.resolve}
+                onPress={() => decideSuggestion(o.id, 'approved')}
+                disabled={decidingId === o.id}
+              >
+                {decidingId === o.id ? <ActivityIndicator size="small" color="#10150d" /> : <Text style={s.resolveText}>Approve</Text>}
+              </Pressable>
+              <Pressable
+                style={s.dismiss}
+                onPress={() =>
+                  Alert.alert('Decline listing', `Decline "${o.name}"?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Decline', onPress: () => decideSuggestion(o.id, 'declined') },
+                  ])
+                }
+                disabled={decidingId === o.id}
               >
                 <Text style={s.dismissText}>Decline</Text>
               </Pressable>

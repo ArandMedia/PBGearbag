@@ -29,10 +29,25 @@ export class CommunityService {
   async updateGearItem(userId:string,id:string,data:Partial<GearItem>){const row=await this.owned(this.gearItems,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearItems.save(row)}
   async archiveGearItem(userId:string,id:string){return this.updateGearItem(userId,id,{isArchived:true})}
 
-  listTeams(search?:string){const q=this.teams.createQueryBuilder('team');if(search)q.where('team.name ILIKE :s OR team.city ILIKE :s',{s:`%${search}%`});return q.orderBy('team.createdAt','DESC').getMany()}
-  getTeam(slug:string){return this.teams.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Team not found');return x})}
-  async createTeam(userId:string,data:Partial<Team>){return this.db.transaction(async manager=>{const repo=manager.getRepository(Team);const slug=await this.uniqueSlug(repo,data.name||'team');const team=await repo.save(repo.create({...data,slug,ownerId:userId}));await manager.getRepository(TeamMember).save({teamId:team.id,userId,role:TeamMemberRole.OWNER,isActive:true});return team})}
-  async updateTeam(userId:string,id:string,data:Partial<Team>){await this.requireTeamManager(userId,id);const team=await this.teams.findOneByOrFail({id});Object.assign(team,data,{id,ownerId:team.ownerId,slug:team.slug});return this.teams.save(team)}
+  listTeams(search?:string){const q=this.teams.createQueryBuilder('team').where('team.moderation_status = :s',{s:ApplicationStatus.APPROVED});if(search)q.andWhere('(team.name ILIKE :q OR team.city ILIKE :q)',{q:`%${search}%`});return q.orderBy('team.createdAt','DESC').getMany()}
+  getTeam(slug:string){return this.teams.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED}}).then(x=>{if(!x)throw new NotFoundException('Team not found');return x})}
+  async createTeam(userId:string,data:Partial<Team>){return this.db.transaction(async manager=>{const repo=manager.getRepository(Team);const slug=await this.uniqueSlug(repo,data.name||'team');const team=await repo.save(repo.create({...data,slug,ownerId:userId,moderationStatus:ApplicationStatus.PENDING}));await manager.getRepository(TeamMember).save({teamId:team.id,userId,role:TeamMemberRole.OWNER,isActive:true});return team})}
+  async updateTeam(userId:string,id:string,data:Partial<Team>){await this.requireTeamManager(userId,id);const team=await this.teams.findOneByOrFail({id});Object.assign(team,data,{id,ownerId:team.ownerId,slug:team.slug,moderationStatus:team.moderationStatus});return this.teams.save(team)}
+  listPendingTeams(){return this.teams.find({where:{moderationStatus:ApplicationStatus.PENDING},order:{createdAt:'ASC'}})}
+  async decideTeam(id:string,status:ApplicationStatus){
+    const team=await this.teams.findOneBy({id});
+    if(!team)throw new NotFoundException('Team not found');
+    team.moderationStatus=status;
+    await this.teams.save(team);
+    await this.notifications.save(this.notifications.create({
+      userId:team.ownerId,
+      type:status===ApplicationStatus.APPROVED?'team_approved':'team_declined',
+      title:status===ApplicationStatus.APPROVED?'Your team is live':'Team submission declined',
+      body:status===ApplicationStatus.APPROVED?`${team.name} was approved and is now visible on PBGearbag.`:`${team.name} wasn't approved. Reach out to support if you have questions.`,
+      data:{teamId:team.id},
+    }));
+    return team;
+  }
   async applyTeam(userId:string,teamId:string,message?:string){if(await this.teamMembers.exist({where:{teamId,userId,isActive:true}}))throw new BadRequestException('Already a team member');const existing=await this.applications.findOne({where:{teamId,userId,status:ApplicationStatus.PENDING}});return existing||this.applications.save(this.applications.create({teamId,userId,message,status:ApplicationStatus.PENDING}))}
   async teamApplications(userId:string,teamId:string){await this.requireTeamManager(userId,teamId);return this.applications.find({where:{teamId},order:{createdAt:'DESC'}})}
   async teamMembership(userId:string,teamId:string){return this.teamMembers.findOne({where:{teamId,userId,isActive:true}})}
@@ -41,7 +56,7 @@ export class CommunityService {
 
   async listOrganizations(opts:{type?:string;bbox?:string;page?:number;limit?:number}={}){
     const {type,bbox,page,limit}=opts;
-    const q=this.organizations.createQueryBuilder('org');
+    const q=this.organizations.createQueryBuilder('org').where('org.moderation_status = :ms',{ms:ApplicationStatus.APPROVED});
     if(type)q.andWhere('org.type = :type',{type});
     if(bbox){
       const parts=bbox.split(',').map(Number);
@@ -63,8 +78,26 @@ export class CommunityService {
     // business listing, so a flat higher cap is simpler than pagination here.
     return q.orderBy('org.name','ASC').take(2000).getMany();
   }
-  async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
-  async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
+  async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
+  async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,moderationStatus:ApplicationStatus.PENDING,details:{...data.details,suggestedBy:userId}}))}
+  listPendingOrganizationSuggestions(){return this.organizations.find({where:{moderationStatus:ApplicationStatus.PENDING},order:{createdAt:'ASC'}})}
+  async decideOrganizationSuggestion(id:string,status:ApplicationStatus){
+    const org=await this.organizations.findOneBy({id});
+    if(!org)throw new NotFoundException('Organization not found');
+    org.moderationStatus=status;
+    await this.organizations.save(org);
+    const suggestedBy=(org.details as any)?.suggestedBy;
+    if(suggestedBy){
+      await this.notifications.save(this.notifications.create({
+        userId:suggestedBy,
+        type:status===ApplicationStatus.APPROVED?'field_suggestion_approved':'field_suggestion_declined',
+        title:status===ApplicationStatus.APPROVED?'Your listing is live':'Listing submission declined',
+        body:status===ApplicationStatus.APPROVED?`${org.name} was approved and is now visible on PBGearbag.`:`${org.name} wasn't approved. Reach out to support if you have questions.`,
+        data:{organizationId:org.id},
+      }));
+    }
+    return org;
+  }
   organizationEvents(organizationId:string){return this.events.find({where:{organizationId,status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:20})}
   async importOsmFields(bbox:string){
     try{return await runOsmImport(this.organizations,bbox)}
@@ -200,10 +233,33 @@ export class CommunityService {
     return [];
   }
 
-  listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED},order:{startsAt:'ASC'}})}
-  getEvent(slug:string){return this.events.findOne({where:{slug}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
-  async createEvent(userId:string,data:Partial<CommunityEvent>){const slug=await this.uniqueSlug(this.events,data.title||'event');return this.events.save(this.events.create({...data,slug,organizerId:userId}))}
-  async updateEvent(userId:string,id:string,data:Partial<CommunityEvent>){const event=await this.events.findOneBy({id});if(!event)throw new NotFoundException('Event not found');if(event.organizerId!==userId)throw new ForbiddenException('Only the organizer can edit this event');Object.assign(event,data,{id,organizerId:userId,slug:event.slug});return this.events.save(event)}
+  listEvents(){return this.events.find({where:{status:EventStatus.PUBLISHED,moderationStatus:ApplicationStatus.APPROVED},order:{startsAt:'ASC'}})}
+  getEvent(slug:string){return this.events.findOne({where:{slug,moderationStatus:ApplicationStatus.APPROVED}}).then(x=>{if(!x)throw new NotFoundException('Event not found');return x})}
+  async createEvent(userId:string,data:Partial<CommunityEvent>){const slug=await this.uniqueSlug(this.events,data.title||'event');return this.events.save(this.events.create({...data,slug,organizerId:userId,status:EventStatus.DRAFT,moderationStatus:ApplicationStatus.PENDING}))}
+  async updateEvent(userId:string,id:string,data:Partial<CommunityEvent>){
+    const event=await this.events.findOneBy({id});
+    if(!event)throw new NotFoundException('Event not found');
+    if(event.organizerId!==userId)throw new ForbiddenException('Only the organizer can edit this event');
+    if(data.status===EventStatus.PUBLISHED&&event.moderationStatus!==ApplicationStatus.APPROVED)throw new ForbiddenException('This event needs to be approved before it can be published');
+    Object.assign(event,data,{id,organizerId:userId,slug:event.slug,moderationStatus:event.moderationStatus});
+    return this.events.save(event);
+  }
+  listPendingEvents(){return this.events.find({where:{moderationStatus:ApplicationStatus.PENDING},order:{createdAt:'ASC'}})}
+  async decideEvent(id:string,status:ApplicationStatus){
+    const event=await this.events.findOneBy({id});
+    if(!event)throw new NotFoundException('Event not found');
+    event.moderationStatus=status;
+    if(status===ApplicationStatus.APPROVED&&event.status===EventStatus.DRAFT)event.status=EventStatus.PUBLISHED;
+    await this.events.save(event);
+    await this.notifications.save(this.notifications.create({
+      userId:event.organizerId,
+      type:status===ApplicationStatus.APPROVED?'event_approved':'event_declined',
+      title:status===ApplicationStatus.APPROVED?'Your event is live':'Event submission declined',
+      body:status===ApplicationStatus.APPROVED?`${event.title} was approved and is now visible on PBGearbag.`:`${event.title} wasn't approved. Reach out to support if you have questions.`,
+      data:{eventId:event.id},
+    }));
+    return event;
+  }
   async rsvpEvent(userId:string,eventId:string,status:RsvpStatus,visibility=Visibility.MEMBERS){const event=await this.events.findOneBy({id:eventId});if(!event||event.status!==EventStatus.PUBLISHED)throw new NotFoundException('Published event not found');let rsvp=await this.rsvps.findOne({where:{eventId,userId}});if(!rsvp)rsvp=this.rsvps.create({eventId,userId,status,visibility});else Object.assign(rsvp,{status,visibility});return this.rsvps.save(rsvp)}
   async myUpcomingEvents(userId:string,limit=5){const going=await this.rsvps.find({where:{userId,status:RsvpStatus.GOING}});if(!going.length)return [];return this.events.find({where:{id:In(going.map(x=>x.eventId)),status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:limit})}
 

@@ -1,5 +1,5 @@
 import { Repository } from "typeorm";
-import { Organization, OrganizationType } from "./entities/community.entity";
+import { ApplicationStatus, Organization, OrganizationType } from "./entities/community.entity";
 
 // Populates the field directory from OpenStreetMap — free, openly licensed
 // (ODbL), and queryable without an API key via the public Overpass API.
@@ -138,6 +138,9 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
           websiteUrl: tags.website || tags["contact:website"] || existing.websiteUrl,
           contactEmail: tags.email || tags["contact:email"] || existing.contactEmail,
           phoneNumber: tags.phone || tags["contact:phone"] || existing.phoneNumber,
+          // OSM data is trusted/external and already reviewed by the
+          // dedup/quality tooling — it doesn't need a second human gate.
+          moderationStatus: ApplicationStatus.APPROVED,
           details: {
             ...existing.details,
             source: "osm",
@@ -187,6 +190,7 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
         phoneNumber: tags.phone || tags["contact:phone"],
         isVerified: false,
         claimedById: undefined,
+        moderationStatus: ApplicationStatus.APPROVED,
         details: {
           source: "osm",
           osmId,

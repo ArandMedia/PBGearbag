@@ -49,6 +49,7 @@ export class Team {
   @Column({name:'home_field_id',type:'uuid',nullable:true}) homeFieldId?:string;
   @Column({name:'is_recruiting',default:false}) isRecruiting:boolean;
   @Column({name:'contact_enabled',default:true}) contactEnabled:boolean;
+  @Column({name:'moderation_status',type:'enum',enum:ApplicationStatus,default:ApplicationStatus.APPROVED}) moderationStatus:ApplicationStatus;
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
 
@@ -80,6 +81,7 @@ export class Organization {
   @Column({name:'logo_url',nullable:true}) logoUrl?:string; @Column('simple-array',{nullable:true}) images?:string[];
   @Column({name:'is_verified',default:false}) isVerified:boolean; @Column({name:'claimed_by_id',type:'uuid',nullable:true}) claimedById?:string;
   @Column({type:'jsonb',default:()=>"'{}'::jsonb"}) details:Record<string,unknown>;
+  @Column({name:'moderation_status',type:'enum',enum:ApplicationStatus,default:ApplicationStatus.APPROVED}) moderationStatus:ApplicationStatus;
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
 
@@ -93,6 +95,7 @@ export class CommunityEvent {
   @Column({nullable:true}) city?:string; @Column({nullable:true}) region?:string; @Column({nullable:true}) country?:string;
   @Column({name:'registration_url',nullable:true}) registrationUrl?:string; @Column({name:'cost_cents',type:'int',nullable:true}) costCents?:number; @Column({nullable:true}) capacity?:number;
   @Column({name:'banner_url',nullable:true}) bannerUrl?:string; @Column({name:'cancelled_reason',type:'text',nullable:true}) cancelledReason?:string;
+  @Column({name:'moderation_status',type:'enum',enum:ApplicationStatus,default:ApplicationStatus.APPROVED}) moderationStatus:ApplicationStatus;
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
 

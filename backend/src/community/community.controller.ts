@@ -39,6 +39,10 @@ export class GearbagsController { constructor(private s:CommunityService){}
 
 @Controller('teams')
 export class TeamsController { constructor(private s:CommunityService){}
+  // Literal-path routes must be registered before ':slug' — see the same
+  // note on OrganizationsController below.
+  @Get('pending') @Roles(UserRole.ADMIN) pending(){return this.s.listPendingTeams()}
+  @Patch(':id/moderate') @Roles(UserRole.ADMIN) moderate(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideTeam(id,d.status)}
   @Get() @Public() list(@Query('search')q?:string){return this.s.listTeams(q)} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getTeam(slug)}
   @Post() create(@CurrentUser()u:User,@Body()d:TeamDto){return this.s.createTeam(u.id,d)} @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<TeamDto>){return this.s.updateTeam(u.id,id,d)}
   @Post(':id/applications') apply(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ApplicationDto){return this.s.applyTeam(u.id,id,d.message)}
@@ -61,6 +65,8 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Delete('cleanup-duplicates') @Roles(UserRole.ADMIN) cleanupDuplicates(){return this.s.cleanupDuplicateOrganizations()}
   @Get('quality-report') @Roles(UserRole.ADMIN) qualityReport(){return this.s.organizationQualityReport()}
   @Delete(':id') @Roles(UserRole.ADMIN) removeOrg(@Param('id')id:string){return this.s.deleteOrganization(id)}
+  @Get('pending-suggestions') @Roles(UserRole.ADMIN) pendingSuggestions(){return this.s.listPendingOrganizationSuggestions()}
+  @Patch(':id/moderate-suggestion') @Roles(UserRole.ADMIN) moderateSuggestion(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideOrganizationSuggestion(id,d.status)}
   @Get('followed/mine') followed(@CurrentUser()u:User){return this.s.myFollowedOrganizations(u.id)}
   @Get() @Public() list(@Query('type')type?:string,@Query('bbox')bbox?:string,@Query('page')page?:string,@Query('limit')limit?:string){return this.s.listOrganizations({type,bbox,page:page?Number(page):undefined,limit:limit?Number(limit):undefined})}
   @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getOrganization(slug)}
@@ -75,6 +81,10 @@ export class OrganizationsController { constructor(private s:CommunityService){}
 
 @Controller('events')
 export class EventsController { constructor(private s:CommunityService){}
+  // 'pending' must be registered before ':slug' — see the note on
+  // OrganizationsController below.
+  @Get('pending') @Roles(UserRole.ADMIN) pending(){return this.s.listPendingEvents()}
+  @Patch(':id/moderate') @Roles(UserRole.ADMIN) moderate(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideEvent(id,d.status)}
   @Get() @Public() list(){return this.s.listEvents()} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getEvent(slug)}
   @Post() create(@CurrentUser()u:User,@Body()d:EventDto){return this.s.createEvent(u.id,d as any)} @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<EventDto>){return this.s.updateEvent(u.id,id,d as any)}
   @Post(':id/rsvp') rsvp(@CurrentUser()u:User,@Param('id')id:string,@Body()d:RsvpDto){return this.s.rsvpEvent(u.id,id,d.status,d.visibility)}
