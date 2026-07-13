@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { Alert } from "../utils/alert";
-import { Announcement, communityService, Event } from "../services/community.service";
+import { Announcement, communityService, Event, Team, Tournament, TournamentEntry, TournamentMatch } from "../services/community.service";
 import { billingService } from "../services/billing.service";
 import { useAuth } from "../store/AuthContext";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
@@ -96,6 +96,20 @@ export default function CommunityEntityScreen({ route }: any) {
   const [scheduling, setScheduling] = useState(false);
   const [practiceGoing, setPracticeGoing] = useState<Record<string, boolean>>({});
   const [practiceRsvpBusy, setPracticeRsvpBusy] = useState<string | null>(null);
+  const [tournamentData, setTournamentData] = useState<{ tournament: Tournament; entries: TournamentEntry[]; matches: TournamentMatch[] } | null>(null);
+  const [myManagedTeam, setMyManagedTeam] = useState<(Team & { role: string }) | null>(null);
+  const [registeringTournament, setRegisteringTournament] = useState(false);
+  const [startingTournament, setStartingTournament] = useState(false);
+  const [reportingMatchId, setReportingMatchId] = useState<string | null>(null);
+  const [scoreInputs, setScoreInputs] = useState<Record<string, { a: string; b: string }>>({});
+  const [showHostForm, setShowHostForm] = useState(false);
+  const [hostTitle, setHostTitle] = useState("");
+  const [hostDescription, setHostDescription] = useState("");
+  const [hostStart, setHostStart] = useState("");
+  const [hostEnd, setHostEnd] = useState("");
+  const [hostMaxTeams, setHostMaxTeams] = useState("");
+  const [hosting, setHosting] = useState(false);
+  const [hostSent, setHostSent] = useState(false);
 
   useEffect(() => {
     const load =
@@ -134,7 +148,11 @@ export default function CommunityEntityScreen({ route }: any) {
         })
         .catch(() => {});
     }
-  }, [data?.id, kind]);
+    if (kind === "event" && data.eventType === "tournament") {
+      communityService.tournament(data.id).then(setTournamentData).catch(() => {});
+      if (user?.id) communityService.myTeam(user.id).then(setMyManagedTeam).catch(() => {});
+    }
+  }, [data?.id, kind, data?.eventType, user?.id]);
 
   if (!data)
     return (
@@ -282,6 +300,83 @@ export default function CommunityEntityScreen({ route }: any) {
       Alert.alert("Couldn't update", "Please try again in a moment.");
     } finally {
       setPracticeRsvpBusy(null);
+    }
+  };
+  const isTournamentOrganizer = kind === "event" && data.eventType === "tournament" && data.organizerId === user?.id;
+  const myEntryTeamId = myManagedTeam && ["owner", "manager", "captain"].includes(myManagedTeam.role) ? myManagedTeam.id : null;
+  const alreadyRegistered = !!(tournamentData && myEntryTeamId && tournamentData.entries.some((e) => e.teamId === myEntryTeamId));
+  const teamName = (entryId?: string) => (entryId ? tournamentData?.entries.find((e) => e.id === entryId)?.teamName || "TBD" : "TBD");
+  const registerForTournament = async () => {
+    if (!tournamentData || !myEntryTeamId) return;
+    setRegisteringTournament(true);
+    try {
+      const entry = await communityService.registerTournamentTeam(tournamentData.tournament.id, myEntryTeamId);
+      setTournamentData((prev) => (prev ? { ...prev, entries: [...prev.entries, { ...entry, teamName: myManagedTeam?.name }] } : prev));
+    } catch (e: any) {
+      Alert.alert("Couldn't register", e?.response?.data?.message || "Please try again in a moment.");
+    } finally {
+      setRegisteringTournament(false);
+    }
+  };
+  const startTheTournament = async () => {
+    if (!tournamentData) return;
+    setStartingTournament(true);
+    try {
+      const result = await communityService.startTournament(tournamentData.tournament.id);
+      setTournamentData(result);
+    } catch (e: any) {
+      Alert.alert("Couldn't start tournament", e?.response?.data?.message || "Please try again in a moment.");
+    } finally {
+      setStartingTournament(false);
+    }
+  };
+  const reportResult = async (matchId: string) => {
+    const scores = scoreInputs[matchId];
+    const a = Number(scores?.a), b = Number(scores?.b);
+    if (!scores || Number.isNaN(a) || Number.isNaN(b) || a === b) {
+      Alert.alert("Enter valid scores", "Both scores must be numbers and can't be tied.");
+      return;
+    }
+    setReportingMatchId(matchId);
+    try {
+      const result = await communityService.reportTournamentMatch(matchId, a, b);
+      setTournamentData(result);
+    } catch (e: any) {
+      Alert.alert("Couldn't report result", e?.response?.data?.message || "Please try again in a moment.");
+    } finally {
+      setReportingMatchId(null);
+    }
+  };
+  const submitHostTournament = async () => {
+    if (!hostTitle.trim() || !hostStart.trim() || !hostEnd.trim()) return;
+    const startsAt = new Date(hostStart);
+    const endsAt = new Date(hostEnd);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      Alert.alert("Check the dates", "Start and end need to be valid dates, e.g. \"Aug 1, 2026 6:00 PM\".");
+      return;
+    }
+    setHosting(true);
+    try {
+      await communityService.createTournament({
+        organizationId: data.id,
+        title: hostTitle.trim(),
+        description: hostDescription.trim() || undefined,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        maxTeams: hostMaxTeams.trim() ? Number(hostMaxTeams.trim()) : undefined,
+      });
+      setHostTitle("");
+      setHostDescription("");
+      setHostStart("");
+      setHostEnd("");
+      setHostMaxTeams("");
+      setHostSent(true);
+      setShowHostForm(false);
+    } catch (e: any) {
+      Alert.alert("Couldn't submit tournament", e?.response?.data?.message || "Please try again in a moment.");
+    } finally {
+      setHosting(false);
     }
   };
   const amenities: string[] = Array.isArray((data.details as any)?.amenities) ? (data.details as any).amenities : [];
@@ -463,6 +558,177 @@ export default function CommunityEntityScreen({ route }: any) {
               <Text style={s.postBtnText}>Claim this field</Text>
             </Pressable>
           )}
+        </View>
+      )}
+
+      {kind === "field" && data.claimedById === user?.id && (
+        <View style={s.card}>
+          <View style={s.announceHeader}>
+            <Text style={s.label}>HOST A TOURNAMENT</Text>
+            <Pressable onPress={() => setShowHostForm((v) => !v)}>
+              <Text style={[s.announceToggle, { color: accent }]}>{showHostForm ? "Cancel" : "+ New tournament"}</Text>
+            </Pressable>
+          </View>
+          {hostSent && (
+            <Text style={[s.claimSentText, { color: accent }]}>Tournament submitted — it'll go live once approved, and you can start the bracket from its event page once teams register.</Text>
+          )}
+          {showHostForm && (
+            <View style={s.announceForm}>
+              <TextInput
+                style={s.input}
+                placeholder="Tournament name"
+                placeholderTextColor="#5A655F"
+                value={hostTitle}
+                onChangeText={setHostTitle}
+              />
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="Description (optional)"
+                placeholderTextColor="#5A655F"
+                value={hostDescription}
+                onChangeText={setHostDescription}
+                multiline
+                numberOfLines={3}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Starts — e.g. Aug 1, 2026 9:00 AM"
+                placeholderTextColor="#5A655F"
+                value={hostStart}
+                onChangeText={setHostStart}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Ends — e.g. Aug 2, 2026 5:00 PM"
+                placeholderTextColor="#5A655F"
+                value={hostEnd}
+                onChangeText={setHostEnd}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Max teams (optional)"
+                placeholderTextColor="#5A655F"
+                keyboardType="number-pad"
+                value={hostMaxTeams}
+                onChangeText={setHostMaxTeams}
+              />
+              <Pressable
+                style={[
+                  s.postBtn,
+                  { backgroundColor: accent },
+                  (!hostTitle.trim() || !hostStart.trim() || !hostEnd.trim() || hosting) && s.postBtnDisabled,
+                ]}
+                onPress={submitHostTournament}
+                disabled={!hostTitle.trim() || !hostStart.trim() || !hostEnd.trim() || hosting}
+              >
+                {hosting ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.postBtnText}>Submit for review</Text>}
+              </Pressable>
+            </View>
+          )}
+        </View>
+      )}
+
+      {kind === "event" && data.eventType === "tournament" && tournamentData && (
+        <View style={s.card}>
+          <Text style={s.label}>BRACKET</Text>
+          <Text style={s.place}>
+            {tournamentData.entries.length} team{tournamentData.entries.length === 1 ? "" : "s"} registered
+            {tournamentData.tournament.maxTeams ? ` of ${tournamentData.tournament.maxTeams}` : ""}
+          </Text>
+          {tournamentData.tournament.status === "registration_open" && (
+            <View style={{ marginTop: 12 }}>
+              {myEntryTeamId && !alreadyRegistered && (
+                <Pressable
+                  style={[s.postBtn, { backgroundColor: accent }, registeringTournament && s.postBtnDisabled]}
+                  onPress={registerForTournament}
+                  disabled={registeringTournament}
+                >
+                  {registeringTournament ? (
+                    <ActivityIndicator size="small" color="#10140D" />
+                  ) : (
+                    <Text style={s.postBtnText}>Register {myManagedTeam?.name}</Text>
+                  )}
+                </Pressable>
+              )}
+              {alreadyRegistered && <Text style={s.matchPending}>Your team is registered.</Text>}
+              {isTournamentOrganizer && (
+                <Pressable
+                  style={[s.directionsBtn, { borderColor: accent, marginTop: 10 }]}
+                  onPress={startTheTournament}
+                  disabled={startingTournament || tournamentData.entries.length < 2}
+                >
+                  {startingTournament ? (
+                    <ActivityIndicator size="small" color={accent} />
+                  ) : (
+                    <Text style={[s.directionsBtnText, { color: accent }]}>
+                      {tournamentData.entries.length < 2 ? "NEED 2+ TEAMS TO START" : "START TOURNAMENT"}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
+          )}
+          {tournamentData.matches.length > 0 &&
+            Object.entries(
+              tournamentData.matches.reduce((acc: Record<number, TournamentMatch[]>, m) => {
+                (acc[m.round] ||= []).push(m);
+                return acc;
+              }, {}),
+            )
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([round, roundMatches]) => (
+                <View key={round} style={{ marginTop: 16 }}>
+                  <Text style={s.roundLabel}>ROUND {round}</Text>
+                  {roundMatches.map((m) => {
+                    const isBye = m.status === "completed" && m.teamAScore == null;
+                    const canReport = isTournamentOrganizer && m.status === "ready";
+                    return (
+                      <View key={m.id} style={s.matchRow}>
+                        <Text style={s.matchTeams}>
+                          {teamName(m.teamAEntryId)} vs {teamName(m.teamBEntryId)}
+                        </Text>
+                        {m.status === "completed" ? (
+                          <Text style={[s.matchResult, { color: accent }]}>
+                            {isBye ? "BYE" : `${m.teamAScore}–${m.teamBScore}`} · {teamName(m.winnerEntryId)} won
+                          </Text>
+                        ) : canReport ? (
+                          <View style={s.scoreRow}>
+                            <TextInput
+                              style={s.scoreInput}
+                              keyboardType="number-pad"
+                              placeholder="A"
+                              placeholderTextColor="#5A655F"
+                              value={scoreInputs[m.id]?.a || ""}
+                              onChangeText={(v) => setScoreInputs((prev) => ({ ...prev, [m.id]: { a: v, b: prev[m.id]?.b || "" } }))}
+                            />
+                            <TextInput
+                              style={s.scoreInput}
+                              keyboardType="number-pad"
+                              placeholder="B"
+                              placeholderTextColor="#5A655F"
+                              value={scoreInputs[m.id]?.b || ""}
+                              onChangeText={(v) => setScoreInputs((prev) => ({ ...prev, [m.id]: { a: prev[m.id]?.a || "", b: v } }))}
+                            />
+                            <Pressable
+                              style={[s.postBtn, { backgroundColor: accent }, reportingMatchId === m.id && s.postBtnDisabled]}
+                              onPress={() => reportResult(m.id)}
+                              disabled={reportingMatchId === m.id}
+                            >
+                              {reportingMatchId === m.id ? (
+                                <ActivityIndicator size="small" color="#10140D" />
+                              ) : (
+                                <Text style={s.postBtnText}>Report</Text>
+                              )}
+                            </Pressable>
+                          </View>
+                        ) : (
+                          <Text style={s.matchPending}>{m.status === "ready" ? "Awaiting result" : "Pending"}</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
         </View>
       )}
 
@@ -718,4 +984,21 @@ const s = StyleSheet.create({
   eventDate: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900" },
   claimBody: { color: "#B8C1BC", fontSize: 13, lineHeight: 19, marginBottom: 14 },
   claimSentText: { color: DEFAULT_ACCENT, fontSize: 13, fontWeight: "800" },
+  roundLabel: { color: "#75817B", fontSize: 10, fontWeight: "900", letterSpacing: 1, marginBottom: 8 },
+  matchRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#29322F" },
+  matchTeams: { color: "#F3F1E8", fontSize: 13, fontWeight: "800" },
+  matchResult: { fontSize: 12, fontWeight: "900", marginTop: 4 },
+  matchPending: { color: "#68737d", fontSize: 12, marginTop: 4, fontStyle: "italic" },
+  scoreRow: { flexDirection: "row", gap: 8, marginTop: 8, alignItems: "center" },
+  scoreInput: {
+    backgroundColor: "#171c20",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#364047",
+    color: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    width: 56,
+    textAlign: "center",
+  },
 });

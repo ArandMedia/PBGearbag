@@ -5,8 +5,9 @@ import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
 import { MessagePermission, User } from '../users/entities/user.entity';
 import { SocialService } from '../social/social.service';
 import { BillingService } from '../billing/billing.service';
-import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
+import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Tournament, TournamentEntry, TournamentFormat, TournamentMatch, Visibility } from './entities/community.entity';
 import { importOsmFields as runOsmImport } from './osm-import.util';
+import { advanceMatch, generateSingleEliminationBracket } from './tournament-bracket.util';
 
 @Injectable()
 export class CommunityService {
@@ -19,6 +20,7 @@ export class CommunityService {
     @InjectRepository(Listing) private listings:Repository<Listing>, @InjectRepository(ListingFavorite) private favorites:Repository<ListingFavorite>, @InjectRepository(ListingOffer) private offers:Repository<ListingOffer>,
     @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>,
     @InjectRepository(Announcement) private announcements:Repository<Announcement>,
+    @InjectRepository(Tournament) private tournaments:Repository<Tournament>, @InjectRepository(TournamentEntry) private tournamentEntries:Repository<TournamentEntry>, @InjectRepository(TournamentMatch) private tournamentMatches:Repository<TournamentMatch>,
     @InjectRepository(User) private users:Repository<User>) {}
 
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
@@ -310,6 +312,96 @@ export class CommunityService {
       this.billing.getStatus(team.ownerId),
     ]);
     return {items,ownerIsPro};
+  }
+
+  // Tournaments are CommunityEvents (eventType:'tournament') plus bracket
+  // state. "Partner channel" = the caller already owns the hosting field
+  // via the existing admin-approved claim flow — no separate partner
+  // role/table needed. Still goes through Phase 1's moderation queue like
+  // any other public event.
+  async createTournament(userId:string,data:{organizationId:string;title:string;description?:string;startsAt:string|Date;endsAt:string|Date;timezone:string;city?:string;region?:string;format?:TournamentFormat;maxTeams?:number;registrationClosesAt?:string|Date}){
+    const org=await this.organizations.findOneBy({id:data.organizationId});
+    if(!org)throw new NotFoundException('Field not found');
+    if(org.claimedById!==userId)throw new ForbiddenException('Only this field\'s claimed owner can host a tournament here');
+    return this.db.transaction(async manager=>{
+      const eventsRepo=manager.getRepository(CommunityEvent),tournamentsRepo=manager.getRepository(Tournament);
+      const slug=await this.uniqueSlug(eventsRepo,data.title||'tournament');
+      const event=await eventsRepo.save(eventsRepo.create({
+        title:data.title,description:data.description||'',slug,organizerId:userId,organizationId:org.id,
+        eventType:'tournament',status:EventStatus.DRAFT,moderationStatus:ApplicationStatus.PENDING,
+        startsAt:data.startsAt,endsAt:data.endsAt,timezone:data.timezone,city:data.city,region:data.region,
+      }));
+      const tournament=await tournamentsRepo.save(tournamentsRepo.create({
+        eventId:event.id,format:data.format||'single_elimination',maxTeams:data.maxTeams,
+        registrationClosesAt:data.registrationClosesAt,status:'registration_open',
+      }));
+      return {event,tournament};
+    });
+  }
+  async getTournament(eventId:string){
+    const tournament=await this.tournaments.findOneBy({eventId});
+    if(!tournament)throw new NotFoundException('Tournament not found');
+    const entries=await this.tournamentEntries.find({where:{tournamentId:tournament.id},order:{createdAt:'ASC'}});
+    const teams=entries.length?await this.teams.find({where:{id:In(entries.map(e=>e.teamId))}}):[];
+    const matches=await this.tournamentMatches.find({where:{tournamentId:tournament.id},order:{round:'ASC',matchNumber:'ASC'}});
+    return {tournament,entries:entries.map(e=>({...e,teamName:teams.find(t=>t.id===e.teamId)?.name})),matches};
+  }
+  async registerTeamForTournament(userId:string,tournamentId:string,teamId:string){
+    await this.requireTeamManager(userId,teamId);
+    const tournament=await this.tournaments.findOneBy({id:tournamentId});
+    if(!tournament)throw new NotFoundException('Tournament not found');
+    if(tournament.status!=='registration_open')throw new ForbiddenException('Registration for this tournament is closed');
+    if(tournament.registrationClosesAt&&new Date(tournament.registrationClosesAt)<new Date())throw new ForbiddenException('Registration for this tournament is closed');
+    if(await this.tournamentEntries.exist({where:{tournamentId,teamId,status:'registered'}}))throw new BadRequestException('This team is already registered');
+    if(tournament.maxTeams){const count=await this.tournamentEntries.count({where:{tournamentId,status:'registered'}});if(count>=tournament.maxTeams)throw new ForbiddenException('This tournament is full')}
+    return this.tournamentEntries.save(this.tournamentEntries.create({tournamentId,teamId,registeredBy:userId,status:'registered'}));
+  }
+  private async requireTournamentOrganizer(userId:string,tournamentId:string){
+    const tournament=await this.tournaments.findOneBy({id:tournamentId});
+    if(!tournament)throw new NotFoundException('Tournament not found');
+    const event=await this.events.findOneBy({id:tournament.eventId});
+    if(!event)throw new NotFoundException('Tournament not found');
+    if(event.organizerId!==userId)throw new ForbiddenException('Only the tournament organizer can do this');
+    return {tournament,event};
+  }
+  async startTournament(userId:string,tournamentId:string){
+    const {tournament}=await this.requireTournamentOrganizer(userId,tournamentId);
+    if(tournament.status!=='registration_open')throw new ForbiddenException('This tournament has already started');
+    const entries=await this.tournamentEntries.find({where:{tournamentId,status:'registered'},order:{seed:'ASC',createdAt:'ASC'}});
+    if(entries.length<2)throw new BadRequestException('At least 2 registered teams are required to start');
+    const shells=generateSingleEliminationBracket(entries.map(e=>({entryId:e.id,seed:e.seed})));
+    await this.tournamentMatches.save(shells.map(s=>this.tournamentMatches.create({
+      id:s.id,tournamentId,round:s.round,matchNumber:s.matchNumber,
+      teamAEntryId:s.teamAEntryId,teamBEntryId:s.teamBEntryId,winnerEntryId:s.winnerEntryId,
+      nextMatchId:s.nextMatchId,nextMatchSlot:s.nextMatchSlot,status:s.status,
+    })));
+    tournament.status='in_progress';
+    await this.tournaments.save(tournament);
+    const managers=(await Promise.all(entries.map(e=>this.teamMembers.find({where:{teamId:e.teamId,isActive:true,role:In([TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN])}})))).flat();
+    if(managers.length){
+      const event=await this.events.findOneBy({id:tournament.eventId});
+      await this.notifications.save(managers.map(m=>this.notifications.create({userId:m.userId,type:'tournament_started',title:'Tournament bracket is live',body:`${event?.title||'The tournament'} has started — check the bracket.`,data:{tournamentId,eventId:tournament.eventId}})));
+    }
+    return this.getTournament(tournament.eventId);
+  }
+  async reportMatchResult(userId:string,matchId:string,teamAScore:number,teamBScore:number){
+    const match=await this.tournamentMatches.findOneBy({id:matchId});
+    if(!match)throw new NotFoundException('Match not found');
+    const {tournament,event}=await this.requireTournamentOrganizer(userId,match.tournamentId);
+    const allMatches=await this.tournamentMatches.find({where:{tournamentId:tournament.id}});
+    const shells=allMatches.map(m=>({id:m.id,round:m.round,matchNumber:m.matchNumber,teamAEntryId:m.teamAEntryId,teamBEntryId:m.teamBEntryId,teamAScore:m.teamAScore,teamBScore:m.teamBScore,winnerEntryId:m.winnerEntryId,nextMatchId:m.nextMatchId,nextMatchSlot:m.nextMatchSlot,status:m.status}));
+    try{advanceMatch(shells,matchId,teamAScore,teamBScore)}catch(error:any){throw new BadRequestException(error?.message||'Could not report this result')}
+    const changed=shells.filter(s=>s.id===matchId||s.id===match.nextMatchId);
+    await this.tournamentMatches.save(changed.map(s=>({id:s.id,teamAEntryId:s.teamAEntryId,teamBEntryId:s.teamBEntryId,teamAScore:s.teamAScore,teamBScore:s.teamBScore,winnerEntryId:s.winnerEntryId,status:s.status})));
+    const reportedMatch=shells.find(s=>s.id===matchId)!;
+    if(!reportedMatch.nextMatchId){tournament.status='completed';await this.tournaments.save(tournament)}
+    const entryIds=[match.teamAEntryId,match.teamBEntryId].filter(Boolean) as string[];
+    if(entryIds.length){
+      const entries=await this.tournamentEntries.find({where:{id:In(entryIds)}});
+      const managers=(await Promise.all(entries.map(e=>this.teamMembers.find({where:{teamId:e.teamId,isActive:true,role:In([TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN])}})))).flat();
+      if(managers.length)await this.notifications.save(managers.map(m=>this.notifications.create({userId:m.userId,type:'tournament_match_result',title:'Match result reported',body:`A result was reported in ${event.title}.`,data:{tournamentId:tournament.id,eventId:tournament.eventId,matchId}})));
+    }
+    return this.getTournament(tournament.eventId);
   }
 
   async listConversations(userId:string){const memberships=await this.participants.find({where:{userId,leftAt:IsNull()}});if(!memberships.length)return [];return this.conversations.find({where:{id:In(memberships.map(x=>x.conversationId))},order:{lastMessageAt:'DESC',createdAt:'DESC'}})}

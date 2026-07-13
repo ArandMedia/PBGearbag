@@ -26,6 +26,9 @@ class AnnouncementDto { @IsString() @IsNotEmpty() title:string; @IsString() @IsN
 class ClaimDto { @IsOptional() @IsString() note?:string }
 class ClaimDecisionDto { @IsEnum(ApplicationStatus) status:ApplicationStatus }
 class OsmImportDto { @IsString() @IsNotEmpty() bbox:string }
+class TournamentDto { @IsString() @IsNotEmpty() organizationId:string; @IsString() @IsNotEmpty() title:string; @IsOptional() @IsString() description?:string; @IsDateString() startsAt:any; @IsDateString() endsAt:any; @IsString() timezone:string; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string; @IsOptional() @IsInt() @Min(2) maxTeams?:number; @IsOptional() @IsDateString() registrationClosesAt?:any }
+class TournamentRegisterDto { @IsString() @IsNotEmpty() teamId:string }
+class TournamentResultDto { @IsInt() @Min(0) teamAScore:number; @IsInt() @Min(0) teamBScore:number }
 
 @Controller('gearbags')
 export class GearbagsController { constructor(private s:CommunityService){}
@@ -93,6 +96,15 @@ export class EventsController { constructor(private s:CommunityService){}
   @Post(':id/rsvp') rsvp(@CurrentUser()u:User,@Param('id')id:string,@Body()d:RsvpDto){return this.s.rsvpEvent(u.id,id,d.status,d.visibility)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('event',id)}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'event',id,d)}
+}
+
+@Controller('tournaments')
+export class TournamentsController { constructor(private s:CommunityService){}
+  @Post() create(@CurrentUser()u:User,@Body()d:TournamentDto){return this.s.createTournament(u.id,d)}
+  @Get(':eventId') @Public() one(@Param('eventId')eventId:string){return this.s.getTournament(eventId)}
+  @Post(':id/register') register(@CurrentUser()u:User,@Param('id')id:string,@Body()d:TournamentRegisterDto){return this.s.registerTeamForTournament(u.id,id,d.teamId)}
+  @Post(':id/start') start(@CurrentUser()u:User,@Param('id')id:string){return this.s.startTournament(u.id,id)}
+  @Patch('matches/:id') reportResult(@CurrentUser()u:User,@Param('id')id:string,@Body()d:TournamentResultDto){return this.s.reportMatchResult(u.id,id,d.teamAScore,d.teamBScore)}
 }
 
 @Controller('conversations')

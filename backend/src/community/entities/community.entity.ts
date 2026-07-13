@@ -217,3 +217,55 @@ export class OrganizationClaim {
   @Column({type:'enum',enum:ApplicationStatus,default:ApplicationStatus.PENDING}) status:ApplicationStatus;
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
+
+// A tournament is a CommunityEvent (eventType:'tournament') plus bracket
+// state. `format`/`status` are varchar, not native enums — format is
+// expected to grow (round robin, double elim) and a varchar avoids a
+// migration+ALTER TYPE for every new one; the TS union below constrains v1.
+export type TournamentFormat = 'single_elimination';
+export type TournamentStatus = 'registration_open' | 'registration_closed' | 'in_progress' | 'completed';
+@Entity('tournaments')
+export class Tournament {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index({unique:true}) @Column({name:'event_id'}) eventId:string;
+  @Column({default:'single_elimination'}) format:TournamentFormat;
+  @Column({name:'max_teams',type:'int',nullable:true}) maxTeams?:number;
+  @Column({name:'registration_closes_at',type:'timestamptz',nullable:true}) registrationClosesAt?:Date;
+  @Column({default:'registration_open'}) status:TournamentStatus;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}
+
+// A team's registration in a tournament — the team-level equivalent of an
+// EventRsvp.
+export type TournamentEntryStatus = 'registered' | 'withdrawn';
+@Entity('tournament_entries')
+export class TournamentEntry {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'tournament_id'}) tournamentId:string;
+  @Column({name:'team_id'}) teamId:string; @Column({name:'registered_by'}) registeredBy:string;
+  @Column({type:'int',nullable:true}) seed?:number;
+  @Column({default:'registered'}) status:TournamentEntryStatus;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date;
+}
+
+// One bracket slot. `nextMatchId`/`nextMatchSlot` point forward to where the
+// winner advances — the whole bracket tree is pre-built empty at start time
+// so advancement is just "fill a slot, flip pending->ready when both are
+// filled."
+export type TournamentMatchStatus = 'pending' | 'ready' | 'completed';
+@Entity('tournament_matches')
+export class TournamentMatch {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'tournament_id'}) tournamentId:string;
+  @Column() round:number; @Column({name:'match_number'}) matchNumber:number;
+  @Column({name:'team_a_entry_id',type:'uuid',nullable:true}) teamAEntryId?:string;
+  @Column({name:'team_b_entry_id',type:'uuid',nullable:true}) teamBEntryId?:string;
+  @Column({name:'team_a_score',type:'int',nullable:true}) teamAScore?:number;
+  @Column({name:'team_b_score',type:'int',nullable:true}) teamBScore?:number;
+  @Column({name:'winner_entry_id',type:'uuid',nullable:true}) winnerEntryId?:string;
+  @Column({name:'next_match_id',type:'uuid',nullable:true}) nextMatchId?:string;
+  @Column({name:'next_match_slot',nullable:true}) nextMatchSlot?:'a'|'b';
+  @Column({name:'scheduled_at',type:'timestamptz',nullable:true}) scheduledAt?:Date;
+  @Column({default:'pending'}) status:TournamentMatchStatus;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}
