@@ -98,8 +98,17 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
       skipped++;
       continue;
     }
+    // A bare pin with no name isn't a usable directory entry — it can't be
+    // searched by name, and a "View storefront" click just lands on
+    // "Unnamed Paintball Field" with nothing else on it. Skip it rather
+    // than create clutter; a real owner can add it properly via the claim
+    // flow if they want a listing.
+    if (!tags.name) {
+      skipped++;
+      continue;
+    }
     const osmId = `${el.type}/${el.id}`;
-    const name = tags.name || (tags.shop ? "Unnamed Paintball Shop" : "Unnamed Paintball Field");
+    const name = tags.name;
     const type = resolveType(tags);
     const address = buildAddress(tags);
     const hours = tags.opening_hours;

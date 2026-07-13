@@ -57,6 +57,7 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Get('claims') @Roles(UserRole.ADMIN) claims(){return this.s.listOrganizationClaims()}
   @Patch('claims/:id') @Roles(UserRole.ADMIN) decideClaim(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideOrganizationClaim(id,d.status)}
   @Post('import-osm') @Roles(UserRole.ADMIN) importOsm(@Body()d:OsmImportDto){return this.s.importOsmFields(d.bbox)}
+  @Delete('cleanup-unnamed') @Roles(UserRole.ADMIN) cleanupUnnamed(){return this.s.cleanupUnnamedOrganizations()}
   @Get('followed/mine') followed(@CurrentUser()u:User){return this.s.myFollowedOrganizations(u.id)}
   @Get() @Public() list(@Query('type')type?:string,@Query('bbox')bbox?:string,@Query('page')page?:string,@Query('limit')limit?:string){return this.s.listOrganizations({type,bbox,page:page?Number(page):undefined,limit:limit?Number(limit):undefined})}
   @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getOrganization(slug)}

@@ -66,6 +66,21 @@ export class CommunityService {
     try{return await runOsmImport(this.organizations,bbox)}
     catch(error:any){throw new BadGatewayException(`OSM import failed: ${error?.message||error}`)}
   }
+  // Removes the placeholder rows an earlier version of the importer created
+  // for OSM nodes with no name tag ("Unnamed Paintball Field/Shop") — bare
+  // pins with nothing else on them, cluttering search results with entries
+  // that have no useful detail page. Only ever touches unclaimed, OSM-sourced
+  // rows still carrying that exact placeholder name, so a real listing
+  // someone deliberately named "Unnamed Paintball Field" (or claimed) is safe.
+  async cleanupUnnamedOrganizations(){
+    const result=await this.organizations.createQueryBuilder()
+      .delete()
+      .where('claimed_by_id IS NULL')
+      .andWhere("details ->> 'source' = 'osm'")
+      .andWhere('name IN (:...names)',{names:['Unnamed Paintball Field','Unnamed Paintball Shop']})
+      .execute();
+    return {deleted:result.affected||0};
+  }
 
   async requestOrganizationClaim(userId:string,organizationId:string,note?:string){
     const org=await this.organizations.findOneBy({id:organizationId});
