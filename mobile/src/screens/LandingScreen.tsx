@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Alert } from "../utils/alert";
 import { useAuth } from "../store/AuthContext";
+import PBGLogo from "../components/PBGLogo";
 
 const lime = "#A8C84A";
 export default function LandingScreen({ navigation }: any) {
@@ -62,9 +63,7 @@ export default function LandingScreen({ navigation }: any) {
         contentContainerStyle={[s.content, compact && s.contentMobile]}
       >
         <View style={s.brand}>
-          <View style={s.mark}>
-            <Text style={s.markText}>PB</Text>
-          </View>
+          <PBGLogo size={34} />
           <Text style={s.brandText}>GEARBAG</Text>
         </View>
         <Text style={s.kicker}>THE PAINTBALL NETWORK</Text>
@@ -176,15 +175,6 @@ const s = StyleSheet.create({
   },
   contentMobile: { padding: 20, paddingTop: 10 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 18 },
-  mark: {
-    backgroundColor: lime,
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  markText: { fontWeight: "900", color: "#111", fontSize: 13 },
   brandText: {
     color: "#F5F7F8",
     fontWeight: "900",

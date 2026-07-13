@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 import { BillboardPost } from "../../services/home.service";
-
-const LIME = "#A8C84A";
+import { useTheme, DEFAULT_ACCENT } from "../../store/ThemeContext";
 
 // Shown until a player has enough real activity (follows, posts, RSVPs) to
 // fill the billboard with their own content — cycles through the game's
@@ -63,6 +62,7 @@ interface Props {
 // posts once there are any, falling back to format-themed placeholders
 // (never a blank card) until there's enough activity to fill it.
 export default function Billboard({ posts, playStyle, onPressPost, onExplore }: Props) {
+  const { accent: LIME } = useTheme();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
@@ -100,11 +100,11 @@ export default function Billboard({ posts, playStyle, onPressPost, onExplore }: 
             <View style={s.shade} />
             <Pressable style={s.tapArea} onPress={onExplore}>
               <View style={s.content}>
-                <Text style={s.kicker}>{slide.kicker}</Text>
+                <Text style={[s.kicker, { color: LIME }]}>{slide.kicker}</Text>
                 <Text style={s.placeholderTitle}>{slide.title}</Text>
                 <Text style={s.placeholderBody}>{slide.body}</Text>
                 <View style={s.exploreRow}>
-                  <Text style={s.exploreText}>Explore what's happening →</Text>
+                  <Text style={[s.exploreText, { color: LIME }]}>Explore what's happening →</Text>
                 </View>
               </View>
             </Pressable>
@@ -114,7 +114,7 @@ export default function Billboard({ posts, playStyle, onPressPost, onExplore }: 
               </Pressable>
               <View style={s.dots}>
                 {placeholders.map((p, i) => (
-                  <Pressable key={p.key} onPress={() => changeSlide(i)} style={[s.dot, i === active && s.dotActive]} />
+                  <Pressable key={p.key} onPress={() => changeSlide(i)} style={[s.dot, i === active && { width: 22, backgroundColor: LIME }]} />
                 ))}
               </View>
               <Pressable onPress={() => changeSlide(active + 1)} style={s.arrow}>
@@ -143,7 +143,7 @@ export default function Billboard({ posts, playStyle, onPressPost, onExplore }: 
             <View style={s.content}>
               {post.type === "clip" && (
                 <View style={s.clipBadge}>
-                  <Text style={s.clipBadgeText}>▶ CLIP</Text>
+                  <Text style={[s.clipBadgeText, { color: LIME }]}>▶ CLIP</Text>
                 </View>
               )}
               <Text style={s.caption} numberOfLines={2}>
@@ -166,7 +166,7 @@ export default function Billboard({ posts, playStyle, onPressPost, onExplore }: 
             </Pressable>
             <View style={s.dots}>
               {posts.map((p, i) => (
-                <Pressable key={p.id} onPress={() => changeSlide(i)} style={[s.dot, i === active && s.dotActive]} />
+                <Pressable key={p.id} onPress={() => changeSlide(i)} style={[s.dot, i === active && { width: 22, backgroundColor: LIME }]} />
               ))}
             </View>
             <Pressable onPress={() => changeSlide(active + 1)} style={s.arrow}>
@@ -193,7 +193,7 @@ const s = StyleSheet.create({
   shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(3,5,6,.35)" },
   tapArea: { flex: 1, justifyContent: "flex-end" },
   content: { padding: 32, paddingBottom: 64, maxWidth: 680 },
-  kicker: { color: LIME, fontSize: 12, fontWeight: "900", letterSpacing: 2, marginBottom: 12 },
+  kicker: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900", letterSpacing: 2, marginBottom: 12 },
   clipBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(5,8,7,.72)",
@@ -204,12 +204,12 @@ const s = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 12,
   },
-  clipBadgeText: { color: LIME, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  clipBadgeText: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   caption: { color: "#fff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
   placeholderTitle: { color: "#fff", fontSize: 32, fontWeight: "900", lineHeight: 37, letterSpacing: -0.8 },
   placeholderBody: { color: "#d0d6da", fontSize: 15, lineHeight: 22, marginTop: 12, maxWidth: 480 },
   exploreRow: { marginTop: 18 },
-  exploreText: { color: LIME, fontSize: 13, fontWeight: "900" },
+  exploreText: { color: DEFAULT_ACCENT, fontSize: 13, fontWeight: "900" },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
   avatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#293231", overflow: "hidden" },
   avatarImg: { resizeMode: "cover" },
@@ -233,7 +233,7 @@ const s = StyleSheet.create({
   arrowText: { color: "#fff", fontSize: 22, fontWeight: "500" },
   dots: { flexDirection: "row", gap: 6, alignItems: "center" },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#697279" },
-  dotActive: { width: 22, backgroundColor: LIME },
+  dotActive: { width: 22, backgroundColor: DEFAULT_ACCENT },
   placeholderBadge: {
     position: "absolute",
     right: 22,

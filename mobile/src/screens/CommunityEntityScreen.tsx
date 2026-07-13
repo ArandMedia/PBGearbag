@@ -12,6 +12,8 @@ import {
 import { Alert } from "../utils/alert";
 import { Announcement, communityService, Event } from "../services/community.service";
 import { useAuth } from "../store/AuthContext";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
 
 const AMENITY_LABELS: Record<string, string> = {
   rentals: "Rental equipment",
@@ -38,9 +40,10 @@ function RsvpButton({
   onPress: () => void;
   busy: boolean;
 }) {
+  const { accent } = useTheme();
   return (
     <Pressable
-      style={[s.rsvpBtn, active && s.rsvpBtnActive]}
+      style={[s.rsvpBtn, active && { backgroundColor: accent, borderColor: accent }]}
       onPress={onPress}
       disabled={busy}
     >
@@ -64,6 +67,7 @@ const SOURCE_TYPE: Record<string, "organization" | "event" | "team"> = {
 export default function CommunityEntityScreen({ route }: any) {
   const { kind, slug } = route.params || {};
   const { user } = useAuth();
+  const { accent } = useTheme();
   const [data, setData] = useState<any>();
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
   const [rsvpBusy, setRsvpBusy] = useState(false);
@@ -112,7 +116,7 @@ export default function CommunityEntityScreen({ route }: any) {
   if (!data)
     return (
       <View style={s.center}>
-        <ActivityIndicator color="#A8C84A" />
+        <ActivityIndicator color={accent} />
       </View>
     );
   const location = [data.city, data.region, data.country]
@@ -188,19 +192,23 @@ export default function CommunityEntityScreen({ route }: any) {
       {(data.images?.[0] || data.logoUrl) && (
         <Image source={{ uri: data.images?.[0] || data.logoUrl }} style={s.banner} />
       )}
-      <Text style={s.kicker}>{kind?.toUpperCase()}</Text>
+      <Text style={[s.kicker, { color: accent }]}>{kind?.toUpperCase()}</Text>
       <View style={s.titleRow}>
         <Text style={s.title}>{data.name || data.title}</Text>
         {kind === "field" && (
           <Pressable
-            style={[s.followBtn, isFollowing && s.followBtnActive]}
+            style={[
+              s.followBtn,
+              { borderColor: hexToRgba(accent, 0.4) },
+              isFollowing && { backgroundColor: accent, borderColor: accent },
+            ]}
             onPress={toggleFollow}
             disabled={followBusy}
           >
             {followBusy ? (
-              <ActivityIndicator size="small" color={isFollowing ? "#10140D" : "#A8C84A"} />
+              <ActivityIndicator size="small" color={isFollowing ? "#10140D" : accent} />
             ) : (
-              <Text style={[s.followBtnText, isFollowing && s.followBtnTextActive]}>
+              <Text style={[s.followBtnText, { color: accent }, isFollowing && s.followBtnTextActive]}>
                 {isFollowing ? "Following" : "Follow"}
               </Text>
             )}
@@ -265,7 +273,7 @@ export default function CommunityEntityScreen({ route }: any) {
         {kind === "field" && data.phoneNumber && (
           <Text style={s.detail}>PHONE · {data.phoneNumber}</Text>
         )}
-        {data.isVerified && <Text style={s.verified}>✓ VERIFIED</Text>}
+        {data.isVerified && <Text style={[s.verified, { color: accent }]}>✓ VERIFIED</Text>}
         {data.isRecruiting && (
           <Text style={s.recruiting}>RECRUITING PLAYERS</Text>
         )}
@@ -276,8 +284,11 @@ export default function CommunityEntityScreen({ route }: any) {
           <Text style={s.label}>AMENITIES</Text>
           <View style={s.amenityWrap}>
             {amenities.map((a) => (
-              <View key={a} style={s.amenityTag}>
-                <Text style={s.amenityTagText}>{AMENITY_LABELS[a] || a}</Text>
+              <View
+                key={a}
+                style={[s.amenityTag, { backgroundColor: hexToRgba(accent, 0.1), borderColor: hexToRgba(accent, 0.3) }]}
+              >
+                <Text style={[s.amenityTagText, { color: accent }]}>{AMENITY_LABELS[a] || a}</Text>
               </View>
             ))}
           </View>
@@ -290,7 +301,7 @@ export default function CommunityEntityScreen({ route }: any) {
           {fieldEvents.map((e) => (
             <View key={e.id} style={s.eventRow}>
               <Text style={s.eventTitle} numberOfLines={1}>{e.title}</Text>
-              <Text style={s.eventDate}>
+              <Text style={[s.eventDate, { color: accent }]}>
                 {new Date(e.startsAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
               </Text>
             </View>
@@ -299,14 +310,14 @@ export default function CommunityEntityScreen({ route }: any) {
       )}
 
       {kind === "field" && !data.claimedById && (
-        <View style={[s.card, s.claimCard]}>
+        <View style={[s.card, { borderColor: hexToRgba(accent, 0.35) }]}>
           <Text style={s.label}>IS THIS YOUR FIELD?</Text>
           <Text style={s.claimBody}>
             Claim this listing to manage it as a free storefront — post announcements, keep hours and contact
             info current, and promote events straight to the players who follow you.
           </Text>
           {claimSent ? (
-            <Text style={s.claimSentText}>Claim request sent — an admin will review it shortly.</Text>
+            <Text style={[s.claimSentText, { color: accent }]}>Claim request sent — an admin will review it shortly.</Text>
           ) : showClaimForm ? (
             <View style={s.announceForm}>
               <TextInput
@@ -319,7 +330,7 @@ export default function CommunityEntityScreen({ route }: any) {
                 numberOfLines={3}
               />
               <Pressable
-                style={[s.postBtn, claiming && s.postBtnDisabled]}
+                style={[s.postBtn, { backgroundColor: accent }, claiming && s.postBtnDisabled]}
                 onPress={submitClaim}
                 disabled={claiming}
               >
@@ -327,7 +338,7 @@ export default function CommunityEntityScreen({ route }: any) {
               </Pressable>
             </View>
           ) : (
-            <Pressable style={s.postBtn} onPress={() => setShowClaimForm(true)}>
+            <Pressable style={[s.postBtn, { backgroundColor: accent }]} onPress={() => setShowClaimForm(true)}>
               <Text style={s.postBtnText}>Claim this field</Text>
             </Pressable>
           )}
@@ -339,7 +350,7 @@ export default function CommunityEntityScreen({ route }: any) {
           <Text style={s.label}>ANNOUNCEMENTS</Text>
           {canAnnounce && (
             <Pressable onPress={() => setShowAnnounceForm((v) => !v)}>
-              <Text style={s.announceToggle}>{showAnnounceForm ? "Cancel" : "+ Post"}</Text>
+              <Text style={[s.announceToggle, { color: accent }]}>{showAnnounceForm ? "Cancel" : "+ Post"}</Text>
             </Pressable>
           )}
         </View>
@@ -362,7 +373,11 @@ export default function CommunityEntityScreen({ route }: any) {
               numberOfLines={3}
             />
             <Pressable
-              style={[s.postBtn, (!announceTitle.trim() || !announceBody.trim() || posting) && s.postBtnDisabled]}
+              style={[
+                s.postBtn,
+                { backgroundColor: accent },
+                (!announceTitle.trim() || !announceBody.trim() || posting) && s.postBtnDisabled,
+              ]}
               onPress={postAnnouncement}
               disabled={!announceTitle.trim() || !announceBody.trim() || posting}
             >
@@ -396,7 +411,7 @@ const s = StyleSheet.create({
   },
   banner: { width: "100%", height: 180, borderRadius: 14, backgroundColor: "#121819", marginBottom: 18 },
   kicker: {
-    color: "#A8C84A",
+    color: DEFAULT_ACCENT,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1.5,
@@ -414,7 +429,6 @@ const s = StyleSheet.create({
     minWidth: 90,
     alignItems: "center",
   },
-  rsvpBtnActive: { backgroundColor: "#A8C84A", borderColor: "#A8C84A" },
   rsvpBtnText: { color: "#D6DDDA", fontSize: 10, fontWeight: "900" },
   rsvpBtnTextActive: { color: "#10140D" },
   card: {
@@ -438,23 +452,22 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#29322F",
   },
-  verified: { color: "#A8C84A", fontWeight: "900", marginTop: 13 },
+  verified: { color: DEFAULT_ACCENT, fontWeight: "900", marginTop: 13 },
   recruiting: { color: "#E8743B", fontWeight: "900", marginTop: 13 },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   followBtn: {
     borderWidth: 1,
-    borderColor: "rgba(168,200,74,.4)",
+    borderColor: hexToRgba(DEFAULT_ACCENT, 0.4),
     borderRadius: 30,
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginTop: 10,
   },
-  followBtnActive: { backgroundColor: "#A8C84A", borderColor: "#A8C84A" },
-  followBtnText: { color: "#A8C84A", fontSize: 12, fontWeight: "900" },
+  followBtnText: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   followBtnTextActive: { color: "#10140D" },
   followerCount: { color: "#75817B", fontSize: 12, marginTop: 6 },
   announceHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  announceToggle: { color: "#A8C84A", fontSize: 12, fontWeight: "900" },
+  announceToggle: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   announceForm: { marginTop: 10, marginBottom: 16, gap: 10 },
   input: {
     backgroundColor: "#171c20",
@@ -466,7 +479,7 @@ const s = StyleSheet.create({
     borderColor: "#364047",
   },
   inputMultiline: { minHeight: 80, textAlignVertical: "top" },
-  postBtn: { alignSelf: "flex-start", backgroundColor: "#A8C84A", borderRadius: 10, paddingHorizontal: 18, paddingVertical: 11 },
+  postBtn: { alignSelf: "flex-start", backgroundColor: DEFAULT_ACCENT, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 11 },
   postBtnDisabled: { opacity: 0.5 },
   postBtnText: { color: "#10150d", fontWeight: "900", fontSize: 13 },
   emptyAnnounce: { color: "#68737d", fontSize: 13, fontStyle: "italic" },
@@ -476,18 +489,17 @@ const s = StyleSheet.create({
   announceTime: { color: "#5A655F", fontSize: 10, marginTop: 6 },
   amenityWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   amenityTag: {
-    backgroundColor: "rgba(168,200,74,.1)",
+    backgroundColor: hexToRgba(DEFAULT_ACCENT, 0.1),
     borderWidth: 1,
-    borderColor: "rgba(168,200,74,.3)",
+    borderColor: hexToRgba(DEFAULT_ACCENT, 0.3),
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  amenityTagText: { color: "#A8C84A", fontSize: 11, fontWeight: "800" },
+  amenityTagText: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "800" },
   eventRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#29322F" },
   eventTitle: { color: "#F3F1E8", fontSize: 13, fontWeight: "800", flex: 1, marginRight: 10 },
-  eventDate: { color: "#A8C84A", fontSize: 11, fontWeight: "900" },
-  claimCard: { borderColor: "rgba(168,200,74,.35)" },
+  eventDate: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900" },
   claimBody: { color: "#B8C1BC", fontSize: 13, lineHeight: 19, marginBottom: 14 },
-  claimSentText: { color: "#A8C84A", fontSize: 13, fontWeight: "800" },
+  claimSentText: { color: DEFAULT_ACCENT, fontSize: 13, fontWeight: "800" },
 });

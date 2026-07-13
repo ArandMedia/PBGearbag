@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Alert } from '../utils/alert';
 import { useAuth } from '../store/AuthContext';
+import PBGLogo from '../components/PBGLogo';
 const hero = require('../../assets/brand/pbgearbag-hero-v1.jpg');
 
 export default function LoginScreen({ navigation }: any) {
@@ -53,7 +54,7 @@ export default function LoginScreen({ navigation }: any) {
           <Text style={styles.promise}>Free to join. No pressure. Just more ways to play.</Text>
         </View>
         <View style={styles.form}>
-          <View style={styles.brandRow}><View style={styles.brandMark}><Text style={styles.brandMarkText}>PBG</Text></View><Text style={styles.brandName}>PBGearbag</Text></View>
+          <View style={styles.brandRow}><PBGLogo size={38} /><Text style={styles.brandName}>PBGearbag</Text></View>
           <Text style={styles.kicker}>THE PAINTBALL NETWORK</Text>
           <Text style={styles.title}>Get back in the game.</Text>
           <Text style={styles.subtitle}>Your gear, your people, and your next field day are waiting.</Text>
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   benefitTitle:{color:'#fff',fontSize:16,fontWeight:'900'},
   benefitCopy:{color:'#96a1a8',fontSize:14,lineHeight:20,marginTop:3,maxWidth:360},
   promise:{color:'#A8C84A',fontSize:13,fontWeight:'800',marginTop:10},
-  brandRow:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:28},brandMark:{width:38,height:38,borderRadius:11,backgroundColor:'#A8C84A',alignItems:'center',justifyContent:'center'},brandMarkText:{color:'#11170d',fontWeight:'900',fontSize:11},brandName:{color:'#fff',fontSize:20,fontWeight:'900'},kicker:{color:'#A8C84A',fontSize:10,fontWeight:'900',letterSpacing:1.7,marginBottom:11},
+  brandRow:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:28},brandName:{color:'#fff',fontSize:20,fontWeight:'900'},kicker:{color:'#A8C84A',fontSize:10,fontWeight:'900',letterSpacing:1.7,marginBottom:11},
   title: {
     fontSize: 42,
     fontWeight: '900',

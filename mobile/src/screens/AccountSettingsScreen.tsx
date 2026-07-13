@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,22 +11,54 @@ import {
 } from "react-native";
 import { Alert } from "../utils/alert";
 import { useAuth } from "../store/AuthContext";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { authService } from "../services/auth.service";
 import {
   socialService,
   SocialProfileSummary,
 } from "../services/social.service";
 
-const TURF = "#A8C84A",
-  INK = "#0A0E0F",
+const INK = "#0A0E0F",
   PANEL = "#121819",
   RED = "#B97861";
+
+const PRESET_COLORS = [
+  DEFAULT_ACCENT,
+  "#4AA8C8",
+  "#C84AA8",
+  "#E8743B",
+  "#C84A4A",
+  "#8B4AC8",
+  "#4AC88F",
+  "#C8A84A",
+];
 
 const MESSAGE_OPTIONS: { value: string; label: string; hint: string }[] = [
   { value: "everyone", label: "Everyone", hint: "Any player can message you" },
   { value: "following", label: "People I follow", hint: "Only players you follow can message you" },
   { value: "nobody", label: "No one", hint: "Turn off direct messages" },
 ];
+
+// A real color-wheel/spectrum picker with zero new dependencies — the
+// browser's own native picker. No native (iOS/Android) equivalent exists,
+// so this renders nothing there; the preset swatches below cover that case.
+function WebColorInput({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+  if (Platform.OS !== "web") return null;
+  return React.createElement("input", {
+    type: "color",
+    value,
+    onChange: (e: any) => onChange(e.target.value),
+    style: {
+      width: 52,
+      height: 40,
+      border: "1px solid #293231",
+      borderRadius: 8,
+      cursor: "pointer",
+      background: "none",
+      padding: 2,
+    },
+  });
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -38,6 +71,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function AccountSettingsScreen({ navigation }: any) {
   const { user, logout, refreshUser } = useAuth();
+  const { accent: TURF, setAccent, saving: themeSaving } = useTheme();
+  const [colorDraft, setColorDraft] = useState(TURF);
+  useEffect(() => setColorDraft(TURF), [TURF]);
+  const applyColor = async (hex: string) => {
+    setColorDraft(hex);
+    try {
+      await setAccent(hex);
+    } catch {
+      Alert.alert("Couldn't save", "Please try again in a moment.");
+    }
+  };
 
   // Change password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -189,6 +233,36 @@ export default function AccountSettingsScreen({ navigation }: any) {
       <Text style={s.heading}>Account settings</Text>
       <Text style={s.subhead}>Security, privacy, and account controls.</Text>
 
+      <Section title="APPEARANCE">
+        <Text style={s.label}>Theme color</Text>
+        <Text style={s.hint}>
+          Pick any color — it carries through the app, including your logo mark. Green is the default.
+        </Text>
+        <View style={s.colorRow}>
+          <View style={[s.colorPreview, { backgroundColor: colorDraft }]} />
+          <WebColorInput value={colorDraft} onChange={applyColor} />
+          <TextInput
+            style={[s.input, s.hexInput]}
+            value={colorDraft}
+            onChangeText={(v) => setColorDraft(v)}
+            onSubmitEditing={() => /^#[0-9a-fA-F]{6}$/.test(colorDraft) && applyColor(colorDraft)}
+            placeholder="#A8C84A"
+            placeholderTextColor="#5f6972"
+            autoCapitalize="none"
+          />
+          {themeSaving && <ActivityIndicator size="small" color={TURF} />}
+        </View>
+        <View style={s.swatchRow}>
+          {PRESET_COLORS.map((c) => (
+            <Pressable
+              key={c}
+              style={[s.swatch, { backgroundColor: c }, c === TURF && s.swatchActive]}
+              onPress={() => applyColor(c)}
+            />
+          ))}
+        </View>
+      </Section>
+
       <Section title="EMAIL & PASSWORD">
         <Text style={s.label}>Current password</Text>
         <TextInput
@@ -218,7 +292,7 @@ export default function AccountSettingsScreen({ navigation }: any) {
           secureTextEntry
         />
         {pwError && <Text style={s.errorText}>{pwError}</Text>}
-        <Pressable style={s.primaryBtn} onPress={changePassword} disabled={pwBusy}>
+        <Pressable style={[s.primaryBtn, { backgroundColor: TURF }]} onPress={changePassword} disabled={pwBusy}>
           {pwBusy ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.primaryBtnText}>Change password</Text>}
         </Pressable>
 
@@ -254,7 +328,7 @@ export default function AccountSettingsScreen({ navigation }: any) {
               secureTextEntry
             />
             {emailError && <Text style={s.errorText}>{emailError}</Text>}
-            <Pressable style={s.primaryBtn} onPress={changeEmail} disabled={emailBusy}>
+            <Pressable style={[s.primaryBtn, { backgroundColor: TURF }]} onPress={changeEmail} disabled={emailBusy}>
               {emailBusy ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.primaryBtnText}>Send confirmation</Text>}
             </Pressable>
           </>
@@ -271,12 +345,12 @@ export default function AccountSettingsScreen({ navigation }: any) {
         {MESSAGE_OPTIONS.map((opt) => (
           <Pressable
             key={opt.value}
-            style={[s.optionRow, messagePermission === opt.value && s.optionRowActive]}
+            style={[s.optionRow, messagePermission === opt.value && { borderColor: TURF }]}
             onPress={() => updateMessagePermission(opt.value)}
             disabled={permBusy}
           >
-            <View style={[s.radio, messagePermission === opt.value && s.radioActive]}>
-              {messagePermission === opt.value && <View style={s.radioDot} />}
+            <View style={[s.radio, messagePermission === opt.value && { borderColor: TURF }]}>
+              {messagePermission === opt.value && <View style={[s.radioDot, { backgroundColor: TURF }]} />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.optionLabel}>{opt.label}</Text>
@@ -383,8 +457,14 @@ const s = StyleSheet.create({
     fontSize: 13,
   },
   errorText: { color: "#ff6b6b", fontSize: 12, marginTop: 8 },
+  colorRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
+  colorPreview: { width: 40, height: 40, borderRadius: 8, borderWidth: 1, borderColor: "#293231" },
+  hexInput: { flex: 1, maxWidth: 140 },
+  swatchRow: { flexDirection: "row", gap: 10, marginTop: 14 },
+  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: "transparent" },
+  swatchActive: { borderColor: "#F3F1E8" },
   primaryBtn: {
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
@@ -410,7 +490,7 @@ const s = StyleSheet.create({
     padding: 12,
     marginTop: 8,
   },
-  optionRowActive: { borderColor: TURF },
+  optionRowActive: { borderColor: DEFAULT_ACCENT },
   radio: {
     width: 18,
     height: 18,
@@ -420,8 +500,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  radioActive: { borderColor: TURF },
-  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: TURF },
+  radioActive: { borderColor: DEFAULT_ACCENT },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: DEFAULT_ACCENT },
   optionLabel: { color: "#F3F1E8", fontSize: 13, fontWeight: "800" },
   optionHint: { color: "#75817D", fontSize: 11, marginTop: 2 },
   blockedRow: {

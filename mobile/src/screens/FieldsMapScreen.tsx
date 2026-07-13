@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { communityService, Organization } from "../services/community.service";
 import { paintballAmenities } from "../constants/paintball";
-
-const LIME = "#A8C84A";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
 
 function matchesFilters(f: Organization, search: string, verifiedOnly: boolean, amenities: string[]) {
   if (verifiedOnly && !f.isVerified) return false;
@@ -29,6 +29,7 @@ function FilterBar({
   setFiltersOpen,
   resultCount,
 }: any) {
+  const { accent } = useTheme();
   return (
     <View style={s.filterBar}>
       <View style={s.searchRow}>
@@ -39,15 +40,21 @@ function FilterBar({
           placeholder="Search fields by name or city"
           placeholderTextColor="#7b878f"
         />
-        <Pressable style={[s.filterToggle, filtersOpen && s.filterToggleOn]} onPress={() => setFiltersOpen((v: boolean) => !v)}>
-          <Text style={[s.filterToggleText, filtersOpen && s.filterToggleTextOn]}>
+        <Pressable
+          style={[s.filterToggle, { borderColor: accent }, filtersOpen && { backgroundColor: accent, borderColor: accent }]}
+          onPress={() => setFiltersOpen((v: boolean) => !v)}
+        >
+          <Text style={[s.filterToggleText, { color: accent }, filtersOpen && s.filterToggleTextOn]}>
             FILTERS{amenities.length ? ` (${amenities.length})` : ""}
           </Text>
         </Pressable>
       </View>
       {filtersOpen && (
         <View style={s.filterPanel}>
-          <Pressable style={[s.chip, verifiedOnly && s.chipOn]} onPress={() => setVerifiedOnly((v: boolean) => !v)}>
+          <Pressable
+            style={[s.chip, verifiedOnly && { backgroundColor: accent, borderColor: accent }]}
+            onPress={() => setVerifiedOnly((v: boolean) => !v)}
+          >
             <Text style={[s.chipText, verifiedOnly && s.chipTextOn]}>Verified only</Text>
           </Pressable>
           <ScrollView style={s.amenityScroll}>
@@ -55,7 +62,7 @@ function FilterBar({
               {paintballAmenities.map(([value, label]) => (
                 <Pressable
                   key={value}
-                  style={[s.chip, amenities.includes(value) && s.chipOn]}
+                  style={[s.chip, amenities.includes(value) && { backgroundColor: accent, borderColor: accent }]}
                   onPress={() => toggleAmenity(value)}
                 >
                   <Text style={[s.chipText, amenities.includes(value) && s.chipTextOn]}>{label}</Text>
@@ -74,11 +81,12 @@ function FilterBar({
 // a plain list rather than pulling leaflet/react-leaflet into a native
 // bundle that has no window/DOM to render into.
 function FieldsListFallback({ navigation, fields, loading, filterProps }: any) {
+  const { accent } = useTheme();
   return (
     <ScrollView style={s.page} contentContainerStyle={s.listContent}>
       <FilterBar {...filterProps} />
       {loading ? (
-        <ActivityIndicator color={LIME} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={accent} style={{ marginTop: 40 }} />
       ) : (
         fields.map((f: Organization) => (
           <Pressable
@@ -107,9 +115,12 @@ if (Platform.OS === "web") {
   const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = require("react-leaflet");
   const L = require("leaflet");
 
+  // Built once at module load (Leaflet icons aren't React elements), so
+  // this can't reach the theme context — map pins stay the default green
+  // regardless of the viewer's chosen accent, a minor deliberate exception.
   const fieldIcon = L.divIcon({
     className: "pbg-field-marker",
-    html: `<div style="width:14px;height:14px;border-radius:7px;background:${LIME};border:2px solid #0A0E0F;"></div>`,
+    html: `<div style="width:14px;height:14px;border-radius:7px;background:${DEFAULT_ACCENT};border:2px solid #0A0E0F;"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
@@ -161,6 +172,7 @@ if (Platform.OS === "web") {
 }
 
 export default function FieldsMapScreen({ navigation }: any) {
+  const { accent } = useTheme();
   const [fields, setFields] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -220,7 +232,7 @@ export default function FieldsMapScreen({ navigation }: any) {
       </View>
       {loading && (
         <View style={s.loadingPill}>
-          <ActivityIndicator size="small" color={LIME} />
+          <ActivityIndicator size="small" color={accent} />
           <Text style={s.loadingPillText}>Loading fields...</Text>
         </View>
       )}
@@ -273,13 +285,12 @@ const s = StyleSheet.create({
   },
   filterToggle: {
     borderWidth: 1,
-    borderColor: "rgba(168,200,74,.4)",
+    borderColor: hexToRgba(DEFAULT_ACCENT, 0.4),
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  filterToggleOn: { backgroundColor: LIME, borderColor: LIME },
-  filterToggleText: { color: LIME, fontSize: 10, fontWeight: "900" },
+  filterToggleText: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900" },
   filterToggleTextOn: { color: "#10150d" },
   filterPanel: { marginTop: 10 },
   amenityScroll: { maxHeight: 160, marginTop: 8 },
@@ -292,7 +303,6 @@ const s = StyleSheet.create({
     paddingVertical: 6,
     marginRight: 0,
   },
-  chipOn: { backgroundColor: LIME, borderColor: LIME },
   chipText: { color: "#D6DDDA", fontSize: 11, fontWeight: "700" },
   chipTextOn: { color: "#10150d" },
   resultCount: { color: "#77827D", fontSize: 11, marginTop: 10, fontWeight: "700" },

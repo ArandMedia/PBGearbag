@@ -5,9 +5,10 @@ import { Gearbag } from "../services/community.service";
 import { Listing } from "../services/marketplace.service";
 import { ProfileWidget } from "../services/widgets.service";
 import { computeAutoAchievements } from "../utils/achievements";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
 
-const TURF = "#A8C84A",
-  PANEL = "#121819",
+const PANEL = "#121819",
   ORANGE = "#E8743B";
 
 // Data every widget card might need, gathered once by the parent screen.
@@ -84,14 +85,18 @@ function WoodsballKitCard({ ctx }: { ctx: WidgetContext }) {
 }
 
 function StatsCard({ widget }: { widget: ProfileWidget }) {
+  const { accent } = useTheme();
   const stats: { primary: string; secondary: string }[] = widget.config?.items || [];
   const platform: string = widget.config?.platform || "";
   const profileUrl: string = widget.config?.profileUrl || "";
   return (
     <Card eyebrow="STATS">
       {profileUrl ? (
-        <Pressable style={s.platformLink} onPress={() => Linking.openURL(profileUrl)}>
-          <Text style={s.platformLinkText} numberOfLines={1}>
+        <Pressable
+          style={[s.platformLink, { backgroundColor: hexToRgba(accent, 0.1), borderColor: hexToRgba(accent, 0.3) }]}
+          onPress={() => Linking.openURL(profileUrl)}
+        >
+          <Text style={[s.platformLinkText, { color: accent }]} numberOfLines={1}>
             View live stats{platform ? ` on ${platform}` : ""} →
           </Text>
         </Pressable>
@@ -100,7 +105,7 @@ function StatsCard({ widget }: { widget: ProfileWidget }) {
         stats.map((x, i) => (
           <View key={i} style={s.row}>
             <Text style={s.rowLabel}>{x.primary}</Text>
-            <Text style={s.rowValue}>{x.secondary}</Text>
+            <Text style={[s.rowValue, { color: accent }]}>{x.secondary}</Text>
           </View>
         ))
       ) : !profileUrl ? (
@@ -123,6 +128,7 @@ function TeamCard({ ctx }: { ctx: WidgetContext }) {
 }
 
 function UpcomingEventsCard({ ctx }: { ctx: WidgetContext }) {
+  const { accent } = useTheme();
   const events = ctx.upcomingEvents || [];
   return (
     <Card eyebrow="UPCOMING EVENTS">
@@ -132,7 +138,7 @@ function UpcomingEventsCard({ ctx }: { ctx: WidgetContext }) {
             <Text style={s.rowLabel} numberOfLines={1}>
               {e.title}
             </Text>
-            <Text style={s.rowValue}>
+            <Text style={[s.rowValue, { color: accent }]}>
               {new Date(e.startsAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
             </Text>
           </View>
@@ -179,6 +185,7 @@ function AchievementsCard({ widget, ctx }: { widget: ProfileWidget; ctx: WidgetC
 }
 
 function SocialLinksCard({ widget }: { widget: ProfileWidget }) {
+  const { accent } = useTheme();
   const links: { primary: string; secondary: string }[] = widget.config?.items || [];
   return (
     <Card eyebrow="SOCIAL LINKS">
@@ -186,7 +193,7 @@ function SocialLinksCard({ widget }: { widget: ProfileWidget }) {
         links.map((x, i) => (
           <View key={i} style={s.row}>
             <Text style={s.rowLabel}>{x.primary}</Text>
-            <Text style={s.link} numberOfLines={1}>
+            <Text style={[s.link, { color: accent }]} numberOfLines={1}>
               {x.secondary}
             </Text>
           </View>
@@ -209,6 +216,7 @@ function BioSpotlightCard({ widget }: { widget: ProfileWidget }) {
 }
 
 function MarketplacePicksCard({ ctx }: { ctx: WidgetContext }) {
+  const { accent } = useTheme();
   const active = (ctx.listings || []).filter((x) => x.status === "active");
   return (
     <Card eyebrow="MARKETPLACE PICKS">
@@ -224,7 +232,7 @@ function MarketplacePicksCard({ ctx }: { ctx: WidgetContext }) {
               <Text style={s.rowLabel} numberOfLines={1}>
                 {x.title}
               </Text>
-              <Text style={s.rowValue}>${Number(x.price).toLocaleString()}</Text>
+              <Text style={[s.rowValue, { color: accent }]}>${Number(x.price).toLocaleString()}</Text>
             </View>
           </View>
         ))
@@ -289,20 +297,20 @@ const s = StyleSheet.create({
     borderBottomColor: "#1E2624",
   },
   rowLabel: { color: "#D6DDDA", fontSize: 12, fontWeight: "700" },
-  rowValue: { color: TURF, fontSize: 11, fontWeight: "900" },
+  rowValue: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900" },
   achievementSub: { color: "#687470", fontSize: 10, marginTop: 2 },
   platformLink: {
-    backgroundColor: "rgba(168,200,74,.1)",
+    backgroundColor: hexToRgba(DEFAULT_ACCENT, 0.1),
     borderWidth: 1,
-    borderColor: "rgba(168,200,74,.3)",
+    borderColor: hexToRgba(DEFAULT_ACCENT, 0.3),
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 10,
     marginTop: 8,
     marginBottom: 4,
   },
-  platformLinkText: { color: TURF, fontSize: 11, fontWeight: "900" },
-  link: { color: TURF, fontSize: 11, maxWidth: 160 },
+  platformLinkText: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900" },
+  link: { color: DEFAULT_ACCENT, fontSize: 11, maxWidth: 160 },
   marketRow: {
     flexDirection: "row",
     alignItems: "center",

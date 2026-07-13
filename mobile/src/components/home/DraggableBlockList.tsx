@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { HomeLayoutBlock } from "../../services/home.service";
+import { useTheme } from "../../store/ThemeContext";
 
 const ROW_HEIGHT = 60;
-const LIME = "#A8C84A";
 
 export interface BlockDef {
   key: string;
@@ -26,6 +26,7 @@ interface Props {
 // web. Rows are absolutely positioned and animate to index*ROW_HEIGHT so a
 // dragged row can freely follow the finger while siblings slide to make room.
 export default function DraggableBlockList({ catalog, order, onChange }: Props) {
+  const { accent: LIME } = useTheme();
   const [localOrder, setLocalOrder] = useState(order);
   useEffect(() => setLocalOrder(order), [order]);
 

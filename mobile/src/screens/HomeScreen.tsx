@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuth } from "../store/AuthContext";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
 import { homeService, HomeFeed, HomeLayoutBlock, BillboardPost } from "../services/home.service";
 import { billingService, BillingStatus } from "../services/billing.service";
 import { widgetsService, ProfileWidget } from "../services/widgets.service";
@@ -15,7 +17,6 @@ import ProWidgetsBlock from "../components/home/ProWidgetsBlock";
 import MarketplacePicksBlock from "../components/home/MarketplacePicksBlock";
 import DraggableBlockList, { BlockDef } from "../components/home/DraggableBlockList";
 
-const LIME = "#A8C84A";
 
 const BLOCK_CATALOG: BlockDef[] = [
   { key: "events", label: "Your Schedule", hint: "Upcoming + nearby events" },
@@ -27,6 +28,7 @@ const BLOCK_CATALOG: BlockDef[] = [
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { accent: LIME } = useTheme();
   const name = user?.displayName || user?.firstName || user?.username || "player";
 
   const [feed, setFeed] = useState<HomeFeed | null>(null);
@@ -148,12 +150,15 @@ export default function HomeScreen({ navigation }: any) {
     <ScrollView style={s.page} contentContainerStyle={s.content}>
       <View style={s.greetingRow}>
         <View>
-          <Text style={s.eyebrow}>WELCOME BACK</Text>
+          <Text style={[s.eyebrow, { color: LIME }]}>WELCOME BACK</Text>
           <Text style={s.greeting}>Hey {name}, here's your field.</Text>
         </View>
-        <Pressable style={[s.editBtn, editing && s.editBtnActive]} onPress={() => setEditing((v) => !v)}>
+        <Pressable
+          style={[s.editBtn, { borderColor: hexToRgba(LIME, 0.4) }, editing && { backgroundColor: LIME, borderColor: LIME }]}
+          onPress={() => setEditing((v) => !v)}
+        >
           <Ionicons name={editing ? "checkmark" : "pencil"} size={14} color={editing ? "#10150d" : LIME} />
-          <Text style={[s.editBtnText, editing && s.editBtnTextActive]}>{editing ? "Done" : "Edit Home"}</Text>
+          <Text style={[s.editBtnText, { color: LIME }, editing && s.editBtnTextActive]}>{editing ? "Done" : "Edit Home"}</Text>
         </Pressable>
       </View>
 
@@ -193,20 +198,20 @@ const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0A0E0F" },
   content: { width: "96%", maxWidth: 1380, alignSelf: "center", paddingTop: 18, paddingBottom: 90 },
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 },
-  eyebrow: { color: "#A8C84A", fontSize: 11, fontWeight: "900", letterSpacing: 2, marginBottom: 6 },
+  eyebrow: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900", letterSpacing: 2, marginBottom: 6 },
   greeting: { color: "#fff", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 },
   editBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
     borderWidth: 1,
-    borderColor: "rgba(168,200,74,.4)",
+    borderColor: hexToRgba(DEFAULT_ACCENT, 0.4),
     borderRadius: 30,
     paddingHorizontal: 15,
     paddingVertical: 10,
   },
-  editBtnActive: { backgroundColor: LIME, borderColor: LIME },
-  editBtnText: { color: LIME, fontSize: 12, fontWeight: "900" },
+  editBtnActive: { backgroundColor: DEFAULT_ACCENT, borderColor: DEFAULT_ACCENT },
+  editBtnText: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   editBtnTextActive: { color: "#10150d" },
   loading: { paddingVertical: 100, alignItems: "center" },
   blocks: { marginTop: 20, gap: 20 },

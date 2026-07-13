@@ -18,6 +18,9 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useAuth } from "../store/AuthContext";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
+import PBGLogo from "../components/PBGLogo";
 import LoginScreen from "../screens/LoginScreen";
 import LandingScreen from "../screens/LandingScreen";
 import RegisterScreen from "../screens/RegisterScreen";
@@ -54,7 +57,6 @@ const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 const INK = "#0A0E0F";
 const PANEL = "#121819";
-const LIME = "#A8C84A";
 
 const icons: Record<string, string> = {
   Home: "grid-outline",
@@ -67,12 +69,10 @@ const icons: Record<string, string> = {
   Profile: "person-outline",
 };
 
-function Brand() {
+function Brand({ color = DEFAULT_ACCENT }: { color?: string }) {
   return (
     <View style={styles.brand}>
-      <View style={styles.brandMark}>
-        <Text style={styles.brandMarkText}>PB</Text>
-      </View>
+      <PBGLogo size={38} color={color} />
       <View>
         <Text style={styles.brandName}>GEARBAG</Text>
         <Text style={styles.brandTag}>THE PAINTBALL NETWORK</Text>
@@ -83,10 +83,11 @@ function Brand() {
 
 function CustomDrawer(props: any) {
   const { user } = useAuth();
+  const { accent } = useTheme();
   return (
     <View style={styles.drawerShell}>
       <View style={styles.drawerBrand}>
-        <Brand />
+        <Brand color={accent} />
       </View>
       <DrawerContentScrollView
         {...props}
@@ -97,6 +98,7 @@ function CustomDrawer(props: any) {
         <Pressable
           style={({ pressed }) => [
             styles.sellButton,
+            { backgroundColor: accent },
             pressed && { opacity: 0.82 },
           ]}
           onPress={() => props.navigation.navigate("CreateListing")}
@@ -107,7 +109,7 @@ function CustomDrawer(props: any) {
       </DrawerContentScrollView>
       <View style={styles.memberCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
+          <Text style={[styles.avatarText, { color: accent }]}>
             {(user?.username || user?.email || "P").slice(0, 1).toUpperCase()}
           </Text>
         </View>
@@ -117,7 +119,7 @@ function CustomDrawer(props: any) {
           </Text>
           <Text style={styles.memberMeta}>VERIFIED PLAYER</Text>
         </View>
-        <View style={styles.onlineDot} />
+        <View style={[styles.onlineDot, { backgroundColor: accent }]} />
       </View>
     </View>
   );
@@ -126,6 +128,7 @@ function CustomDrawer(props: any) {
 function MainDrawer() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
+  const { accent } = useTheme();
   return (
     <Drawer.Navigator
       drawerContent={(p) => <CustomDrawer {...p} />}
@@ -139,9 +142,9 @@ function MainDrawer() {
         },
         overlayColor: "rgba(0,0,0,.72)",
         swipeEdgeWidth: 80,
-        drawerActiveTintColor: LIME,
+        drawerActiveTintColor: accent,
         drawerInactiveTintColor: "#A4ADB3",
-        drawerActiveBackgroundColor: "rgba(168,200,74,.11)",
+        drawerActiveBackgroundColor: hexToRgba(accent, 0.11),
         drawerInactiveBackgroundColor: "transparent",
         drawerLabelStyle: {
           fontSize: 13,
@@ -168,7 +171,7 @@ function MainDrawer() {
         headerTitleStyle: { fontWeight: "800", letterSpacing: 0.4 },
         headerRight: () => (
           <View style={styles.livePill}>
-            <View style={styles.liveDot} />
+            <View style={[styles.liveDot, { backgroundColor: accent }]} />
             <Text style={styles.liveText}>LIVE</Text>
           </View>
         ),
@@ -334,17 +337,6 @@ function MainStack() {
   );
 }
 
-const navTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: LIME,
-    background: INK,
-    card: PANEL,
-    border: "#232B30",
-    text: "#F5F7F8",
-  },
-};
 function getUrlToken(path: string): string | undefined {
   if (Platform.OS !== "web" || typeof window === "undefined") return undefined;
   if (window.location.pathname !== path) return undefined;
@@ -353,14 +345,26 @@ function getUrlToken(path: string): string | undefined {
 
 export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
+  const { accent } = useTheme();
+  const navTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: accent,
+      background: INK,
+      card: PANEL,
+      border: "#232B30",
+      text: "#F5F7F8",
+    },
+  };
   const verifyToken = getUrlToken("/verify-email");
   const resetToken = getUrlToken("/reset-password");
   const emailChangeToken = getUrlToken("/confirm-email-change");
   if (loading)
     return (
       <View style={styles.loading}>
-        <Brand />
-        <ActivityIndicator size="large" color={LIME} />
+        <Brand color={accent} />
+        <ActivityIndicator size="large" color={accent} />
       </View>
     );
   // Email links (verify, reset, confirm-change) can be opened without an
@@ -408,21 +412,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#232B30",
   },
   brand: { flexDirection: "row", alignItems: "center", gap: 11 },
-  brandMark: {
-    width: 38,
-    height: 38,
-    borderRadius: 9,
-    backgroundColor: LIME,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ rotate: "-3deg" }],
-  },
-  brandMarkText: {
-    color: INK,
-    fontWeight: "900",
-    fontSize: 15,
-    letterSpacing: -0.5,
-  },
   brandName: {
     color: "#fff",
     fontSize: 18,
@@ -450,7 +439,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     height: 48,
     borderRadius: 10,
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -476,7 +465,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: LIME, fontWeight: "900" },
+  avatarText: { color: DEFAULT_ACCENT, fontWeight: "900" },
   memberName: { color: "#F3F6F7", fontSize: 12, fontWeight: "800" },
   memberMeta: {
     color: "#68747B",
@@ -485,7 +474,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginTop: 2,
   },
-  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIME },
+  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DEFAULT_ACCENT },
   livePill: {
     marginRight: 16,
     paddingHorizontal: 9,
@@ -496,7 +485,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: LIME },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: DEFAULT_ACCENT },
   liveText: {
     color: "#A9B2B7",
     fontSize: 9,

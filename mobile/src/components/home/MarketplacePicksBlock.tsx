@@ -1,8 +1,8 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Listing } from "../../services/marketplace.service";
+import { useTheme, DEFAULT_ACCENT } from "../../store/ThemeContext";
 
-const LIME = "#A8C84A";
 const PANEL = "#121819";
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function MarketplacePicksBlock({ listings, onPressListing, onSeeAll }: Props) {
+  const { accent } = useTheme();
   return (
     <View style={s.card}>
       <View style={s.header}>
@@ -20,7 +21,7 @@ export default function MarketplacePicksBlock({ listings, onPressListing, onSeeA
           <Text style={s.heading}>Picked for you</Text>
         </View>
         <Pressable onPress={onSeeAll}>
-          <Text style={s.seeAll}>Browse all →</Text>
+          <Text style={[s.seeAll, { color: accent }]}>Browse all →</Text>
         </Pressable>
       </View>
       {!listings.length ? (
@@ -37,7 +38,7 @@ export default function MarketplacePicksBlock({ listings, onPressListing, onSeeA
               <Text style={s.title} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={s.price}>${Number(item.price).toLocaleString()}</Text>
+              <Text style={[s.price, { color: accent }]}>${Number(item.price).toLocaleString()}</Text>
             </Pressable>
           ))}
         </View>
@@ -51,11 +52,11 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
   eyebrow: { color: "#6f7a84", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   heading: { color: "#fff", fontSize: 19, fontWeight: "900", marginTop: 5 },
-  seeAll: { color: LIME, fontSize: 12, fontWeight: "800" },
+  seeAll: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "800" },
   empty: { color: "#8e99a2", fontSize: 13, lineHeight: 19 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   item: { width: 130 },
   image: { width: 130, height: 100, borderRadius: 10, backgroundColor: "#222B2C", marginBottom: 6 },
   title: { color: "#D6DDDA", fontSize: 12, fontWeight: "700" },
-  price: { color: LIME, fontSize: 12, fontWeight: "900", marginTop: 2 },
+  price: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900", marginTop: 2 },
 });
