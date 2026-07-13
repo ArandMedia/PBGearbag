@@ -139,6 +139,9 @@ export class User {
   @Exclude()
   stripeCustomerId?: string;
 
+  @Column({ name: "theme_color", nullable: true })
+  themeColor?: string;
+
   @BeforeInsert()
   @BeforeUpdate()
   emailToLowerCase() {

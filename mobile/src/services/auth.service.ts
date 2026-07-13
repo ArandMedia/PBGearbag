@@ -25,6 +25,7 @@ export interface User {
   roles?: string[];
   pendingEmail?: string;
   messagePermission?: "everyone" | "following" | "nobody";
+  themeColor?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +64,7 @@ export interface UpdateProfileData {
   skillLevel?: string | null;
   homeField?: string;
   favoritePosition?: string;
+  themeColor?: string;
 }
 
 class AuthService {
