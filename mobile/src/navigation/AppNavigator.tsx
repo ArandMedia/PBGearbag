@@ -72,7 +72,7 @@ const icons: Record<string, string> = {
 function Brand({ color = DEFAULT_ACCENT }: { color?: string }) {
   return (
     <View style={styles.brand}>
-      <PBGLogo size={38} color={color} />
+      <PBGLogo size={95} textSize={21} color={color} />
       <View>
         <Text style={styles.brandName}>Gearbag</Text>
         <Text style={styles.brandTag}>THE PAINTBALL NETWORK</Text>

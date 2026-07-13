@@ -63,7 +63,7 @@ export default function LandingScreen({ navigation }: any) {
         contentContainerStyle={[s.content, compact && s.contentMobile]}
       >
         <View style={s.brand}>
-          <PBGLogo size={34} />
+          <PBGLogo size={85} textSize={26} />
           <Text style={s.brandText}>Gearbag</Text>
         </View>
         <Text style={s.kicker}>THE PAINTBALL NETWORK</Text>
@@ -212,7 +212,7 @@ const s = StyleSheet.create({
   authPanel: {
     gap: 12,
     marginTop: 28,
-    width: 460,
+    width: "100%",
     minHeight: 330,
     maxWidth: 460,
     alignSelf: "flex-end",

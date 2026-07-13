@@ -5,6 +5,14 @@ interface Props {
   size?: number;
   color?: string;
   ink?: string;
+  // "PB" font-size in the SVG's own 100-unit coordinate space. Decoupled
+  // from `size` on purpose: when the icon is scaled way up next to a brand
+  // wordmark, the splatter should visually dominate — the letters shouldn't
+  // scale 1:1 with it, or they end up oversized and the mark stops reading
+  // as "art with letters on it." Callers pass a smaller textSize as size
+  // grows so the rendered "PB" stays close to the adjacent wordmark's
+  // on-screen text height instead of ballooning with the icon.
+  textSize?: number;
 }
 
 // A paint-splatter mark, replacing the old plain rounded square. The blob is
@@ -14,7 +22,7 @@ interface Props {
 // as nearby spikes, for the spray-paint look. "PB" sits centered in the
 // shape's solid core with a bold weight so it stays legible against
 // whatever fill color the user picks.
-export default function PBGLogo({ size = 40, color = "#A8C84A", ink = "#10150d" }: Props) {
+export default function PBGLogo({ size = 40, color = "#A8C84A", ink = "#10150d", textSize = 30 }: Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Circle cx={98} cy={10} r={3.5} fill={color} />
@@ -38,8 +46,8 @@ export default function PBGLogo({ size = 40, color = "#A8C84A", ink = "#10150d" 
       />
       <SvgText
         x="50"
-        y="59"
-        fontSize="30"
+        y={50 + textSize * 0.31}
+        fontSize={textSize}
         fontWeight="900"
         fill={ink}
         textAnchor="middle"

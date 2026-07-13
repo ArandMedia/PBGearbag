@@ -54,7 +54,7 @@ export default function LoginScreen({ navigation }: any) {
           <Text style={styles.promise}>Free to join. No pressure. Just more ways to play.</Text>
         </View>
         <View style={styles.form}>
-          <View style={styles.brandRow}><PBGLogo size={38} /><Text style={styles.brandName}>Gearbag</Text></View>
+          <View style={styles.brandRow}><PBGLogo size={95} textSize={26} /><Text style={styles.brandName}>Gearbag</Text></View>
           <Text style={styles.kicker}>THE PAINTBALL NETWORK</Text>
           <Text style={styles.title}>Get back in the game.</Text>
           <Text style={styles.subtitle}>Your gear, your people, and your next field day are waiting.</Text>
