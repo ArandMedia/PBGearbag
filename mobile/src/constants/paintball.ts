@@ -39,3 +39,24 @@ export const paintballAmenities = [
   ["online store", "Online store"],
   ["custom work", "Custom work"],
 ] as const;
+
+// Mirrors backend OrganizationType — shared between DiscoverScreen's place
+// filter and FieldsMapScreen's map type filter.
+export const paintballPlaceTypes = [
+  ["field", "Paintball field"],
+  ["retailer", "Retailer / pro shop"],
+  ["manufacturer", "Manufacturer"],
+  ["airsmith", "Airsmith / tech"],
+  ["hydro_testing", "Hydro testing"],
+  ["event_producer", "Event producer"],
+  ["league", "League / series"],
+  ["media", "Paintball media"],
+  ["photographer", "Photographer / video"],
+  ["apparel", "Apparel / custom gear"],
+  ["travel", "Travel / lodging"],
+  ["training", "Training academy"],
+  ["indoor_venue", "Indoor venue"],
+  ["outdoor_venue", "Outdoor venue"],
+  ["community", "Club / community"],
+  ["other", "Other paintball business"],
+] as const;

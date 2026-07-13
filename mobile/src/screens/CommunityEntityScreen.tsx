@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -187,6 +188,15 @@ export default function CommunityEntityScreen({ route }: any) {
     }
   };
   const amenities: string[] = Array.isArray((data.details as any)?.amenities) ? (data.details as any).amenities : [];
+  const hours: string | undefined = (data.details as any)?.hours;
+  const openDirections = () => {
+    const query =
+      data.latitude != null && data.longitude != null
+        ? `${data.latitude},${data.longitude}`
+        : [data.address, data.city, data.region, data.country].filter(Boolean).join(", ");
+    if (!query) return;
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+  };
   return (
     <ScrollView style={s.page} contentContainerStyle={s.content}>
       {(data.images?.[0] || data.logoUrl) && (
@@ -267,15 +277,29 @@ export default function CommunityEntityScreen({ route }: any) {
         {kind === "event" && data.registrationUrl && (
           <Text style={s.detail}>REGISTRATION · {data.registrationUrl}</Text>
         )}
+        {kind === "field" && data.address && (
+          <Text style={s.detail}>ADDRESS · {data.address}</Text>
+        )}
+        {kind === "field" && hours && (
+          <Text style={s.detail}>HOURS · {hours}</Text>
+        )}
         {kind === "field" && data.websiteUrl && (
           <Text style={s.detail}>WEBSITE · {data.websiteUrl}</Text>
         )}
         {kind === "field" && data.phoneNumber && (
           <Text style={s.detail}>PHONE · {data.phoneNumber}</Text>
         )}
+        {kind === "field" && data.contactEmail && (
+          <Text style={s.detail}>EMAIL · {data.contactEmail}</Text>
+        )}
         {data.isVerified && <Text style={[s.verified, { color: accent }]}>✓ VERIFIED</Text>}
         {data.isRecruiting && (
           <Text style={s.recruiting}>RECRUITING PLAYERS</Text>
+        )}
+        {kind === "field" && (data.latitude != null || data.address) && (
+          <Pressable style={[s.directionsBtn, { borderColor: accent }]} onPress={openDirections}>
+            <Text style={[s.directionsBtnText, { color: accent }]}>GET DIRECTIONS</Text>
+          </Pressable>
         )}
       </View>
 
@@ -454,6 +478,16 @@ const s = StyleSheet.create({
   },
   verified: { color: DEFAULT_ACCENT, fontWeight: "900", marginTop: 13 },
   recruiting: { color: "#E8743B", fontWeight: "900", marginTop: 13 },
+  directionsBtn: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: DEFAULT_ACCENT,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 14,
+  },
+  directionsBtnText: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900", letterSpacing: 0.6 },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   followBtn: {
     borderWidth: 1,

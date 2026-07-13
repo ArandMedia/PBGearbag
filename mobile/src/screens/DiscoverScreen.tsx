@@ -17,7 +17,7 @@ import {
   Organization,
   Team,
 } from "../services/community.service";
-import { paintballAmenities } from "../constants/paintball";
+import { paintballAmenities, paintballPlaceTypes } from "../constants/paintball";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { hexToRgba } from "../utils/color";
 
@@ -41,24 +41,6 @@ const paintballEventTypes = [
   ["charity", "Charity"],
   ["private_event", "Private event"],
   ["trade_show", "Expo / trade show"],
-] as const;
-const paintballPlaceTypes = [
-  ["field", "Paintball field"],
-  ["retailer", "Retailer / pro shop"],
-  ["manufacturer", "Manufacturer"],
-  ["airsmith", "Airsmith / tech"],
-  ["hydro_testing", "Hydro testing"],
-  ["event_producer", "Event producer"],
-  ["league", "League / series"],
-  ["media", "Paintball media"],
-  ["photographer", "Photographer / video"],
-  ["apparel", "Apparel / custom gear"],
-  ["travel", "Travel / lodging"],
-  ["training", "Training academy"],
-  ["indoor_venue", "Indoor venue"],
-  ["outdoor_venue", "Outdoor venue"],
-  ["community", "Club / community"],
-  ["other", "Other paintball business"],
 ] as const;
 function Chip({
   label,

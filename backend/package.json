@@ -21,7 +21,8 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
     "typecheck": "tsc --noEmit",
     "seed": "ts-node -r tsconfig-paths/register src/config/seed.ts",
-    "import:osm": "ts-node -r tsconfig-paths/register src/config/osm-import.ts"
+    "import:osm": "ts-node -r tsconfig-paths/register src/config/osm-import.ts",
+    "import:osm:batch": "ts-node -r tsconfig-paths/register src/config/osm-import-batch.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

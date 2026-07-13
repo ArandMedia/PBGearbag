@@ -19,7 +19,13 @@ interface OverpassElement {
 
 function overpassQuery(bbox: string) {
   const [south, west, north, east] = bbox.split(",").map((s) => s.trim());
-  return `[out:json][timeout:60];(nwr["leisure"="paintball"](${south},${west},${north},${east});nwr["sport"="paintball"](${south},${west},${north},${east}););out center tags;`;
+  const b = `(${south},${west},${north},${east})`;
+  // Fields: the well-established leisure/sport=paintball tags. Shops: OSM
+  // has no dedicated shop=paintball tag in wide use, so the only reliable
+  // signal for a paintball-specific retailer is a shop node that's also
+  // been tagged sport=paintball — narrower than pulling in every sporting
+  // goods store, at the cost of missing shops nobody's tagged that way yet.
+  return `[out:json][timeout:90];(nwr["leisure"="paintball"]${b};nwr["sport"="paintball"]["shop"!~"."]${b};nwr["shop"]["sport"="paintball"]${b};nwr["shop"="paintball"]${b};);out center tags;`;
 }
 
 async function fetchOverpass(bbox: string, attempt = 1): Promise<OverpassElement[]> {
@@ -53,6 +59,16 @@ const AMENITY_TAG_MAP: Record<string, string> = {
   wheelchair: "wheelchair",
 };
 
+function resolveType(tags: Record<string, string>): OrganizationType {
+  return tags.shop ? OrganizationType.RETAILER : OrganizationType.FIELD;
+}
+
+function buildAddress(tags: Record<string, string>): string | undefined {
+  if (tags["addr:full"]) return tags["addr:full"];
+  const parts = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean);
+  return parts.length ? parts.join(" ") : undefined;
+}
+
 async function uniqueSlug(orgs: Repository<Organization>, base: string) {
   const root = slugify(base);
   let slug = root,
@@ -77,7 +93,10 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
       continue;
     }
     const osmId = `${el.type}/${el.id}`;
-    const name = tags.name || "Unnamed Paintball Field";
+    const name = tags.name || (tags.shop ? "Unnamed Paintball Shop" : "Unnamed Paintball Field");
+    const type = resolveType(tags);
+    const address = buildAddress(tags);
+    const hours = tags.opening_hours;
 
     const amenities = Object.entries(AMENITY_TAG_MAP)
       .filter(([osmKey]) => tags[osmKey] === "yes")
@@ -94,9 +113,10 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
       if (!existing.claimedById) {
         await orgs.update(existing.id, {
           name,
+          type,
           latitude: lat,
           longitude: lon,
-          address: tags["addr:full"] || undefined,
+          address: address || undefined,
           city: tags["addr:city"] || existing.city,
           region: tags["addr:state"] || existing.region,
           country: tags["addr:country"] || existing.country,
@@ -108,6 +128,7 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
             source: "osm",
             osmId,
             amenities: amenities.length ? amenities : (existing.details as any)?.amenities,
+            hours: hours || (existing.details as any)?.hours,
           },
         });
         updated++;
@@ -122,11 +143,11 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
       orgs.create({
         slug,
         name,
-        type: OrganizationType.FIELD,
+        type,
         city: tags["addr:city"],
         region: tags["addr:state"],
         country: tags["addr:country"],
-        address: tags["addr:full"],
+        address,
         latitude: lat,
         longitude: lon,
         websiteUrl: tags.website || tags["contact:website"],
@@ -134,7 +155,13 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
         phoneNumber: tags.phone || tags["contact:phone"],
         isVerified: false,
         claimedById: undefined,
-        details: { source: "osm", osmId, importedAt: new Date().toISOString(), ...(amenities.length ? { amenities } : {}) },
+        details: {
+          source: "osm",
+          osmId,
+          importedAt: new Date().toISOString(),
+          ...(amenities.length ? { amenities } : {}),
+          ...(hours ? { hours } : {}),
+        },
       }),
     );
     created++;

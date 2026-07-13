@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { communityService, Organization } from "../services/community.service";
-import { paintballAmenities } from "../constants/paintball";
+import { paintballAmenities, paintballPlaceTypes } from "../constants/paintball";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { hexToRgba } from "../utils/color";
 
-function matchesFilters(f: Organization, search: string, verifiedOnly: boolean, amenities: string[]) {
+function matchesFilters(
+  f: Organization,
+  search: string,
+  verifiedOnly: boolean,
+  amenities: string[],
+  placeType: string,
+) {
+  if (placeType !== "all" && f.type !== placeType) return false;
   if (verifiedOnly && !f.isVerified) return false;
   if (search.trim()) {
     const hay = `${f.name} ${f.city || ""} ${f.region || ""} ${f.country || ""}`.toLowerCase();
@@ -25,11 +32,14 @@ function FilterBar({
   setVerifiedOnly,
   amenities,
   toggleAmenity,
+  placeType,
+  setPlaceType,
   filtersOpen,
   setFiltersOpen,
   resultCount,
 }: any) {
   const { accent } = useTheme();
+  const activeCount = amenities.length + (placeType !== "all" ? 1 : 0);
   return (
     <View style={s.filterBar}>
       <View style={s.searchRow}>
@@ -37,7 +47,7 @@ function FilterBar({
           style={s.searchInput}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search fields by name or city"
+          placeholder="Search fields, shops & more"
           placeholderTextColor="#7b878f"
         />
         <Pressable
@@ -45,14 +55,33 @@ function FilterBar({
           onPress={() => setFiltersOpen((v: boolean) => !v)}
         >
           <Text style={[s.filterToggleText, { color: accent }, filtersOpen && s.filterToggleTextOn]}>
-            FILTERS{amenities.length ? ` (${amenities.length})` : ""}
+            FILTERS{activeCount ? ` (${activeCount})` : ""}
           </Text>
         </Pressable>
       </View>
       {filtersOpen && (
         <View style={s.filterPanel}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.typeScroll}>
+            <View style={s.chipRow}>
+              <Pressable
+                style={[s.chip, placeType === "all" && { backgroundColor: accent, borderColor: accent }]}
+                onPress={() => setPlaceType("all")}
+              >
+                <Text style={[s.chipText, placeType === "all" && s.chipTextOn]}>All types</Text>
+              </Pressable>
+              {paintballPlaceTypes.map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  style={[s.chip, placeType === value && { backgroundColor: accent, borderColor: accent }]}
+                  onPress={() => setPlaceType(value)}
+                >
+                  <Text style={[s.chipText, placeType === value && s.chipTextOn]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
           <Pressable
-            style={[s.chip, verifiedOnly && { backgroundColor: accent, borderColor: accent }]}
+            style={[s.chip, s.verifiedChip, verifiedOnly && { backgroundColor: accent, borderColor: accent }]}
             onPress={() => setVerifiedOnly((v: boolean) => !v)}
           >
             <Text style={[s.chipText, verifiedOnly && s.chipTextOn]}>Verified only</Text>
@@ -72,10 +101,12 @@ function FilterBar({
           </ScrollView>
         </View>
       )}
-      <Text style={s.resultCount}>{resultCount} field{resultCount === 1 ? "" : "s"} match</Text>
+      <Text style={s.resultCount}>{resultCount} place{resultCount === 1 ? "" : "s"} match</Text>
     </View>
   );
 }
+
+const placeTypeLabel = (t?: string) => paintballPlaceTypes.find(([v]) => v === t)?.[1] || t;
 
 // Leaflet is a DOM library — only safe/useful on web. Native falls back to
 // a plain list rather than pulling leaflet/react-leaflet into a native
@@ -95,7 +126,9 @@ function FieldsListFallback({ navigation, fields, loading, filterProps }: any) {
             onPress={() => navigation.getParent()?.navigate("CommunityEntity", { kind: "field", slug: f.slug })}
           >
             <Text style={s.listRowTitle}>{f.name}</Text>
-            <Text style={s.listRowSub}>{[f.city, f.region, f.country].filter(Boolean).join(", ")}</Text>
+            <Text style={s.listRowSub}>
+              {placeTypeLabel(f.type)} · {[f.city, f.region, f.country].filter(Boolean).join(", ")}
+            </Text>
           </Pressable>
         ))
       )}
@@ -116,13 +149,22 @@ if (Platform.OS === "web") {
   const L = require("leaflet");
 
   // Built once at module load (Leaflet icons aren't React elements), so
-  // this can't reach the theme context — map pins stay the default green
+  // these can't reach the theme context — map pins stay fixed colors
   // regardless of the viewer's chosen accent, a minor deliberate exception.
+  // Fields get the default-green dot; every other business type (shops,
+  // manufacturers, airsmiths, etc.) gets an orange square so the two
+  // categories are distinguishable on the map at a glance.
   const fieldIcon = L.divIcon({
     className: "pbg-field-marker",
     html: `<div style="width:14px;height:14px;border-radius:7px;background:${DEFAULT_ACCENT};border:2px solid #0A0E0F;"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
+  });
+  const businessIcon = L.divIcon({
+    className: "pbg-business-marker",
+    html: `<div style="width:12px;height:12px;border-radius:3px;background:#E8743B;border:2px solid #0A0E0F;"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
   });
 
   function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (b: any) => void }) {
@@ -145,7 +187,11 @@ if (Platform.OS === "web") {
         <BoundsWatcher onBoundsChange={onBoundsChange} />
         {fields.map((f: Organization) =>
           f.latitude != null && f.longitude != null ? (
-            <Marker key={f.id} position={[f.latitude, f.longitude]} icon={fieldIcon}>
+            <Marker
+              key={f.id}
+              position={[f.latitude, f.longitude]}
+              icon={f.type === "field" ? fieldIcon : businessIcon}
+            >
               <Popup>
                 <div style={{ minWidth: 160 }}>
                   <strong>{f.name}</strong>
@@ -178,6 +224,7 @@ export default function FieldsMapScreen({ navigation }: any) {
   const [search, setSearch] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [placeType, setPlaceType] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const toggleAmenity = (value: string) =>
     setAmenities((prev) => (prev.includes(value) ? prev.filter((a) => a !== value) : [...prev, value]));
@@ -185,10 +232,12 @@ export default function FieldsMapScreen({ navigation }: any) {
   const onBoundsChange = (bounds: any) => {
     setLoading(true);
     communityService
-      .organizationsInBounds(
-        { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() },
-        "field",
-      )
+      .organizationsInBounds({
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      })
       .then(setFields)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -197,15 +246,15 @@ export default function FieldsMapScreen({ navigation }: any) {
   useEffect(() => {
     if (Platform.OS === "web") return; // web fetches on map bounds instead
     communityService
-      .organizations("field")
+      .organizations()
       .then(setFields)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(
-    () => fields.filter((f) => matchesFilters(f, search, verifiedOnly, amenities)),
-    [fields, search, verifiedOnly, amenities],
+    () => fields.filter((f) => matchesFilters(f, search, verifiedOnly, amenities, placeType)),
+    [fields, search, verifiedOnly, amenities, placeType],
   );
 
   const filterProps = {
@@ -215,6 +264,8 @@ export default function FieldsMapScreen({ navigation }: any) {
     setVerifiedOnly,
     amenities,
     toggleAmenity,
+    placeType,
+    setPlaceType,
     filtersOpen,
     setFiltersOpen,
     resultCount: filtered.length,
@@ -233,7 +284,7 @@ export default function FieldsMapScreen({ navigation }: any) {
       {loading && (
         <View style={s.loadingPill}>
           <ActivityIndicator size="small" color={accent} />
-          <Text style={s.loadingPillText}>Loading fields...</Text>
+          <Text style={s.loadingPillText}>Loading places...</Text>
         </View>
       )}
     </View>
@@ -293,6 +344,9 @@ const s = StyleSheet.create({
   filterToggleText: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900" },
   filterToggleTextOn: { color: "#10150d" },
   filterPanel: { marginTop: 10 },
+  typeScroll: { marginBottom: 8 },
+  chipRow: { flexDirection: "row", gap: 6 },
+  verifiedChip: { alignSelf: "flex-start", marginBottom: 8 },
   amenityScroll: { maxHeight: 160, marginTop: 8 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: {
