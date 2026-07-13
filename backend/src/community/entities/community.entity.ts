@@ -200,3 +200,16 @@ export class HomeLayout {
   @Column({type:'jsonb',default:()=>"'[]'::jsonb"}) blocks:{key:string;hidden:boolean}[];
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
+
+// A request to take ownership of an organization listing — replaces the old
+// instant/unverified claim now that the directory holds real, OSM-sourced
+// businesses. An admin reviews and approves/denies (mirrors TeamApplication).
+@Entity('organization_claims')
+export class OrganizationClaim {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'organization_id'}) organizationId:string;
+  @Index() @Column({name:'user_id'}) userId:string;
+  @Column({type:'text',nullable:true}) note?:string;
+  @Column({type:'enum',enum:ApplicationStatus,default:ApplicationStatus.PENDING}) status:ApplicationStatus;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}

@@ -22,6 +22,9 @@ class ReportDto { @IsString() subjectId:string; @IsString() subjectType:string; 
 class ResolveReportDto { @IsEnum(ReportStatus) status:ReportStatus; @IsOptional() @IsString() resolutionNotes?:string; @IsOptional() @IsString() assignedToId?:string }
 class ReviewDto { @IsString() subjectId:string; @IsString() subjectType:string; @IsInt() @Min(1) @Max(5) rating:number; @IsOptional() @IsString() body?:string; @IsOptional() @IsString() outcomeId?:string }
 class AnnouncementDto { @IsString() @IsNotEmpty() title:string; @IsString() @IsNotEmpty() body:string; @IsOptional() @IsDateString() expiresAt?:any }
+class ClaimDto { @IsOptional() @IsString() note?:string }
+class ClaimDecisionDto { @IsEnum(ApplicationStatus) status:ApplicationStatus }
+class OsmImportDto { @IsString() @IsNotEmpty() bbox:string }
 
 @Controller('gearbags')
 export class GearbagsController { constructor(private s:CommunityService){}
@@ -48,11 +51,20 @@ export class TeamsController { constructor(private s:CommunityService){}
 
 @Controller('organizations')
 export class OrganizationsController { constructor(private s:CommunityService){}
-  @Get() @Public() list(@Query('type')type?:string){return this.s.listOrganizations(type)} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getOrganization(slug)}
-  @Post('suggestions') suggest(@CurrentUser()u:User,@Body()d:OrganizationDto){return this.s.suggestOrganization(u.id,d)} @Post(':id/claim') claim(@CurrentUser()u:User,@Param('id')id:string){return this.s.claimOrganization(u.id,id)}
-  @Post(':id/reviews') review(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Omit<ReviewDto,'subjectId'|'subjectType'>){return this.s.createReview(u.id,{...d,subjectId:id,subjectType:'organization'})}
+  // Literal-path routes must be registered before ':slug' — Nest/Express
+  // matches routes in declaration order, and ':slug' matches any single
+  // path segment, so 'claims'/'followed' would otherwise be swallowed by it.
+  @Get('claims') @Roles(UserRole.ADMIN) claims(){return this.s.listOrganizationClaims()}
+  @Patch('claims/:id') @Roles(UserRole.ADMIN) decideClaim(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideOrganizationClaim(id,d.status)}
+  @Post('import-osm') @Roles(UserRole.ADMIN) importOsm(@Body()d:OsmImportDto){return this.s.importOsmFields(d.bbox)}
   @Get('followed/mine') followed(@CurrentUser()u:User){return this.s.myFollowedOrganizations(u.id)}
+  @Get() @Public() list(@Query('type')type?:string,@Query('bbox')bbox?:string,@Query('page')page?:string,@Query('limit')limit?:string){return this.s.listOrganizations({type,bbox,page:page?Number(page):undefined,limit:limit?Number(limit):undefined})}
+  @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getOrganization(slug)}
+  @Post('suggestions') suggest(@CurrentUser()u:User,@Body()d:OrganizationDto){return this.s.suggestOrganization(u.id,d)}
+  @Post(':id/claim') claim(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ClaimDto){return this.s.requestOrganizationClaim(u.id,id,d.note)}
+  @Post(':id/reviews') review(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Omit<ReviewDto,'subjectId'|'subjectType'>){return this.s.createReview(u.id,{...d,subjectId:id,subjectType:'organization'})}
   @Post(':id/follow') follow(@CurrentUser()u:User,@Param('id')id:string){return this.s.followOrganization(u.id,id)}
+  @Get(':id/events') @Public() events(@Param('id')id:string){return this.s.organizationEvents(id)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('organization',id)}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'organization',id,d)}
 }

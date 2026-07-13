@@ -4,14 +4,15 @@ import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
 import { MessagePermission, User } from '../users/entities/user.entity';
 import { SocialService } from '../social/social.service';
-import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
+import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Visibility } from './entities/community.entity';
+import { importOsmFields as runOsmImport } from './osm-import.util';
 
 @Injectable()
 export class CommunityService {
   constructor(private readonly db:DataSource, private readonly social:SocialService,
     @InjectRepository(Gearbag) private gearbags:Repository<Gearbag>, @InjectRepository(GearItem) private gearItems:Repository<GearItem>,
     @InjectRepository(Team) private teams:Repository<Team>, @InjectRepository(TeamMember) private teamMembers:Repository<TeamMember>, @InjectRepository(TeamApplication) private applications:Repository<TeamApplication>,
-    @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(OrganizationFollow) private orgFollows:Repository<OrganizationFollow>,
+    @InjectRepository(Organization) private organizations:Repository<Organization>, @InjectRepository(OrganizationFollow) private orgFollows:Repository<OrganizationFollow>, @InjectRepository(OrganizationClaim) private orgClaims:Repository<OrganizationClaim>,
     @InjectRepository(CommunityEvent) private events:Repository<CommunityEvent>, @InjectRepository(EventRsvp) private rsvps:Repository<EventRsvp>,
     @InjectRepository(Conversation) private conversations:Repository<Conversation>, @InjectRepository(ConversationParticipant) private participants:Repository<ConversationParticipant>, @InjectRepository(Message) private messages:Repository<Message>,
     @InjectRepository(Listing) private listings:Repository<Listing>, @InjectRepository(ListingFavorite) private favorites:Repository<ListingFavorite>, @InjectRepository(ListingOffer) private offers:Repository<ListingOffer>,
@@ -38,10 +39,51 @@ export class CommunityService {
   async myTeam(userId:string){const membership=await this.teamMembers.findOne({where:{userId,isActive:true},order:{joinedAt:'ASC'}});if(!membership)return null;const team=await this.teams.findOneBy({id:membership.teamId});return team?{...team,role:membership.role}:null}
   async decideApplication(userId:string,id:string,status:ApplicationStatus){const app=await this.applications.findOneBy({id});if(!app)throw new NotFoundException('Application not found');await this.requireTeamManager(userId,app.teamId);app.status=status;await this.applications.save(app);if(status===ApplicationStatus.APPROVED&&!await this.teamMembers.exist({where:{teamId:app.teamId,userId:app.userId}}))await this.teamMembers.save({teamId:app.teamId,userId:app.userId,role:TeamMemberRole.PLAYER,isActive:true});return app}
 
-  listOrganizations(type?:string){return type?this.organizations.find({where:{type:type as any},order:{name:'ASC'}}):this.organizations.find({order:{name:'ASC'}})}
+  async listOrganizations(opts:{type?:string;bbox?:string;page?:number;limit?:number}={}){
+    const {type,bbox,page,limit}=opts;
+    const q=this.organizations.createQueryBuilder('org');
+    if(type)q.andWhere('org.type = :type',{type});
+    if(bbox){
+      const parts=bbox.split(',').map(Number);
+      if(parts.length===4&&parts.every(n=>!Number.isNaN(n))){
+        const [west,south,east,north]=parts;
+        q.andWhere('org.latitude BETWEEN :south AND :north',{south,north})
+         .andWhere('org.longitude BETWEEN :west AND :east',{west,east});
+      }
+      return q.orderBy('org.name','ASC').take(500).getMany();
+    }
+    if(page||limit){
+      const take=Math.min(limit||30,100),skip=((page||1)-1)*take;
+      const [items,total]=await q.orderBy('org.name','ASC').skip(skip).take(take).getManyAndCount();
+      return {items,total,page:page||1,totalPages:Math.ceil(total/take)};
+    }
+    return q.orderBy('org.name','ASC').take(200).getMany();
+  }
   async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
   async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
-  async claimOrganization(userId:string,id:string){const org=await this.organizations.findOneBy({id});if(!org)throw new NotFoundException('Organization not found');if(org.claimedById)throw new BadRequestException('Organization already claimed');org.claimedById=userId;return this.organizations.save(org)}
+  organizationEvents(organizationId:string){return this.events.find({where:{organizationId,status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:20})}
+  importOsmFields(bbox:string){return runOsmImport(this.organizations,bbox)}
+
+  async requestOrganizationClaim(userId:string,organizationId:string,note?:string){
+    const org=await this.organizations.findOneBy({id:organizationId});
+    if(!org)throw new NotFoundException('Organization not found');
+    if(org.claimedById)throw new BadRequestException('This listing is already claimed');
+    const existing=await this.orgClaims.findOne({where:{organizationId,userId,status:ApplicationStatus.PENDING}});
+    if(existing)return existing;
+    return this.orgClaims.save(this.orgClaims.create({organizationId,userId,note,status:ApplicationStatus.PENDING}));
+  }
+  listOrganizationClaims(){return this.orgClaims.find({where:{status:ApplicationStatus.PENDING},order:{createdAt:'ASC'}})}
+  async decideOrganizationClaim(id:string,status:ApplicationStatus){
+    const claim=await this.orgClaims.findOneBy({id});
+    if(!claim)throw new NotFoundException('Claim request not found');
+    claim.status=status;
+    await this.orgClaims.save(claim);
+    if(status===ApplicationStatus.APPROVED){
+      const org=await this.organizations.findOneBy({id:claim.organizationId});
+      if(org&&!org.claimedById){org.claimedById=claim.userId;await this.organizations.save(org)}
+    }
+    return claim;
+  }
 
   async followOrganization(userId:string,organizationId:string){const existing=await this.orgFollows.findOne({where:{userId,organizationId}});if(existing){await this.orgFollows.remove(existing);return {active:false}}if(!await this.organizations.exist({where:{id:organizationId}}))throw new NotFoundException('Organization not found');await this.orgFollows.save(this.orgFollows.create({userId,organizationId}));return {active:true}}
   async myFollowedOrganizations(userId:string){const rows=await this.orgFollows.find({where:{userId}});return rows.length?this.organizations.find({where:{id:In(rows.map(r=>r.organizationId))},order:{name:'ASC'}}):[]}
