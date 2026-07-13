@@ -163,7 +163,12 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       ) : (
         <>
-          <Billboard posts={feed?.billboard || []} onPressPost={onPressBillboardPost} />
+          <Billboard
+            posts={feed?.billboard || []}
+            playStyle={user?.playStyle}
+            onPressPost={onPressBillboardPost}
+            onExplore={() => navigation.navigate("Discover")}
+          />
 
           <View style={s.blocks}>
             {editing ? (

@@ -1,25 +1,79 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 import { BillboardPost } from "../../services/home.service";
 
 const LIME = "#A8C84A";
 
+// Shown until a player has enough real activity (follows, posts, RSVPs) to
+// fill the billboard with their own content — cycles through the game's
+// major formats instead of leaving the space blank. Matches the styles the
+// user is most likely to actually play, keyed by PlayStyle so it can be
+// biased toward theirs first once we know it.
+const PLACEHOLDER_SLIDES = [
+  {
+    key: "speedball",
+    styles: ["speedball", "tournament"],
+    image: require("../../../assets/brand/pbgearbag-hero-v1.jpg"),
+    kicker: "TOURNAMENT / SPEEDBALL",
+    title: "Built for the next breakout.",
+    body: "Follow the tournament scene, sharpen your setup, and find the players pushing the game forward.",
+  },
+  {
+    key: "recball",
+    styles: ["recball"],
+    image: require("../../../assets/brand/pbgearbag-hero-rec-v2.jpg"),
+    kicker: "RECREATIONAL / COMMUNITY",
+    title: "There's always another game.",
+    body: "From a first rental day to a regular weekend crew, find the next reason to get back on the field.",
+  },
+  {
+    key: "woodsball",
+    styles: ["woodsball", "scenario", "big_game"],
+    image: require("../../../assets/brand/pbgearbag-hero-woods-v2.jpg"),
+    kicker: "WOODSBALL / SCENARIO",
+    title: "Go deeper into the game.",
+    body: "Discover scenario weekends, local fields, and the field-tested gear built for long days in the woods.",
+  },
+  {
+    key: "mechanical",
+    styles: ["mechanical", "pump"],
+    image: require("../../../assets/brand/pbgearbag-hero-classic-v2.jpg"),
+    kicker: "MECHANICAL / CLASSIC",
+    title: "The old school still hits hard.",
+    body: "Celebrate pump, mechanical, and classic paintball—and the community keeping its heritage alive.",
+  },
+];
+
+function orderedPlaceholders(playStyle?: string[]) {
+  if (!playStyle?.length) return PLACEHOLDER_SLIDES;
+  const matchIndex = PLACEHOLDER_SLIDES.findIndex((s) => s.styles.some((st) => playStyle.includes(st)));
+  if (matchIndex <= 0) return PLACEHOLDER_SLIDES;
+  return [PLACEHOLDER_SLIDES[matchIndex], ...PLACEHOLDER_SLIDES.filter((_, i) => i !== matchIndex)];
+}
+
 interface Props {
   posts: BillboardPost[];
+  playStyle?: string[];
   onPressPost: (post: BillboardPost) => void;
+  onExplore: () => void;
 }
 
 // Same auto-advance/pause-on-hover/dot-nav/fade mechanics as the old
 // hardcoded hero carousel in HomeScreen — just fed by real, personalized
-// posts instead of fixed marketing slides.
-export default function Billboard({ posts, onPressPost }: Props) {
+// posts once there are any, falling back to format-themed placeholders
+// (never a blank card) until there's enough activity to fill it.
+export default function Billboard({ posts, playStyle, onPressPost, onExplore }: Props) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
 
+  const usingPlaceholders = posts.length === 0;
+  const placeholders = useMemo(() => orderedPlaceholders(playStyle), [playStyle]);
+  const count = usingPlaceholders ? placeholders.length : posts.length;
+
   const changeSlide = (next: number) => {
-    if (!posts.length) return;
-    const target = (next + posts.length) % posts.length;
+    if (!count) return;
+    const target = (next + count) % count;
     if (target === active) return;
     Animated.timing(fade, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setActive(target);
@@ -28,24 +82,51 @@ export default function Billboard({ posts, onPressPost }: Props) {
   };
 
   useEffect(() => {
-    if (paused || posts.length < 2) return;
-    const timer = setInterval(() => changeSlide(active + 1), 6000);
+    if (paused || count < 2) return;
+    const timer = setInterval(() => changeSlide(active + 1), usingPlaceholders ? 7000 : 6000);
     return () => clearInterval(timer);
-  }, [active, paused, posts.length]);
+  }, [active, paused, count, usingPlaceholders]);
 
   useEffect(() => {
-    if (active >= posts.length) setActive(0);
-  }, [posts.length]);
+    if (active >= count) setActive(0);
+  }, [count]);
 
-  if (!posts.length) {
+  if (usingPlaceholders) {
+    const slide = placeholders[active] || placeholders[0];
     return (
-      <View style={[s.hero, s.emptyHero]}>
-        <Text style={s.emptyTitle}>Your billboard is warming up</Text>
-        <Text style={s.emptyBody}>
-          Post a photo or clip to the Field Feed, or follow a few players and fields — this space fills in with
-          what matters to you.
-        </Text>
-      </View>
+      <Pressable onHoverIn={() => setPaused(true)} onHoverOut={() => setPaused(false)}>
+        <Animated.View style={{ opacity: fade }}>
+          <ImageBackground source={slide.image} style={s.hero} imageStyle={s.heroImage}>
+            <View style={s.shade} />
+            <Pressable style={s.tapArea} onPress={onExplore}>
+              <View style={s.content}>
+                <Text style={s.kicker}>{slide.kicker}</Text>
+                <Text style={s.placeholderTitle}>{slide.title}</Text>
+                <Text style={s.placeholderBody}>{slide.body}</Text>
+                <View style={s.exploreRow}>
+                  <Text style={s.exploreText}>Explore what's happening →</Text>
+                </View>
+              </View>
+            </Pressable>
+            <View style={s.controls}>
+              <Pressable onPress={() => changeSlide(active - 1)} style={s.arrow}>
+                <Text style={s.arrowText}>‹</Text>
+              </Pressable>
+              <View style={s.dots}>
+                {placeholders.map((p, i) => (
+                  <Pressable key={p.key} onPress={() => changeSlide(i)} style={[s.dot, i === active && s.dotActive]} />
+                ))}
+              </View>
+              <Pressable onPress={() => changeSlide(active + 1)} style={s.arrow}>
+                <Text style={s.arrowText}>›</Text>
+              </Pressable>
+            </View>
+            <View style={s.placeholderBadge}>
+              <Text style={s.placeholderBadgeText}>YOUR BILLBOARD IS WARMING UP</Text>
+            </View>
+          </ImageBackground>
+        </Animated.View>
+      </Pressable>
     );
   }
 
@@ -112,6 +193,7 @@ const s = StyleSheet.create({
   shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(3,5,6,.35)" },
   tapArea: { flex: 1, justifyContent: "flex-end" },
   content: { padding: 32, paddingBottom: 64, maxWidth: 680 },
+  kicker: { color: LIME, fontSize: 12, fontWeight: "900", letterSpacing: 2, marginBottom: 12 },
   clipBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(5,8,7,.72)",
@@ -124,6 +206,10 @@ const s = StyleSheet.create({
   },
   clipBadgeText: { color: LIME, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   caption: { color: "#fff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
+  placeholderTitle: { color: "#fff", fontSize: 32, fontWeight: "900", lineHeight: 37, letterSpacing: -0.8 },
+  placeholderBody: { color: "#d0d6da", fontSize: 15, lineHeight: 22, marginTop: 12, maxWidth: 480 },
+  exploreRow: { marginTop: 18 },
+  exploreText: { color: LIME, fontSize: 13, fontWeight: "900" },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
   avatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#293231", overflow: "hidden" },
   avatarImg: { resizeMode: "cover" },
@@ -148,7 +234,17 @@ const s = StyleSheet.create({
   dots: { flexDirection: "row", gap: 6, alignItems: "center" },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#697279" },
   dotActive: { width: 22, backgroundColor: LIME },
-  emptyHero: { alignItems: "center", justifyContent: "center", padding: 40 },
-  emptyTitle: { color: "#fff", fontSize: 22, fontWeight: "900", textAlign: "center" },
-  emptyBody: { color: "#8e99a2", fontSize: 14, textAlign: "center", marginTop: 10, maxWidth: 420, lineHeight: 20 },
+  placeholderBadge: {
+    position: "absolute",
+    right: 22,
+    top: 22,
+    zIndex: 4,
+    backgroundColor: "rgba(6,9,10,.78)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.14)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  placeholderBadgeText: { color: "#AEB7BC", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
 });
