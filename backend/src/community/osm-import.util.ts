@@ -153,6 +153,23 @@ export async function importOsmFields(orgs: Repository<Organization>, bbox: stri
       continue;
     }
 
+    // OSM frequently tags the same real-world venue more than once (a way
+    // for the field boundary, a separate node for its entrance/office, a
+    // duplicate submitted years apart) — each with a distinct osmId, so the
+    // osmId lookup above won't catch it. Before creating a new row, check
+    // for an existing org with the same name within ~500m and treat that as
+    // the same place rather than adding another pin on top of it.
+    const near = await orgs
+      .createQueryBuilder("o")
+      .where("LOWER(o.name) = LOWER(:name)", { name })
+      .andWhere("o.latitude BETWEEN :latMin AND :latMax", { latMin: lat - 0.005, latMax: lat + 0.005 })
+      .andWhere("o.longitude BETWEEN :lonMin AND :lonMax", { lonMin: lon - 0.005, lonMax: lon + 0.005 })
+      .getOne();
+    if (near) {
+      skipped++;
+      continue;
+    }
+
     const slug = await uniqueSlug(orgs, name);
     await orgs.save(
       orgs.create({

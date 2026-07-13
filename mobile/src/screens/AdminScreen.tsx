@@ -12,6 +12,12 @@ export default function AdminScreen() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
 
+  const [quality, setQuality] = useState<{ total: number; missingContact: number; missingAddress: number; thinCount: number; thin: Organization[] } | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(true);
+  const [dedupBusy, setDedupBusy] = useState(false);
+  const [dedupResult, setDedupResult] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const load = () =>
     Promise.all([
       communityService.reports(),
@@ -25,8 +31,15 @@ export default function AdminScreen() {
       })
       .finally(() => setLoading(false));
 
+  const loadQuality = () =>
+    communityService
+      .organizationQualityReport()
+      .then(setQuality)
+      .finally(() => setQualityLoading(false));
+
   useEffect(() => {
     void load();
+    void loadQuality();
   }, []);
 
   const orgName = (id: string) => orgs.find((o) => o.id === id)?.name || id.slice(0, 8);
@@ -44,11 +57,47 @@ export default function AdminScreen() {
       const r = await communityService.importOsmFields(bbox.trim());
       setImportResult(`${r.candidates} candidates — created ${r.created}, updated ${r.updated}, skipped ${r.skipped}.`);
       await load();
+      await loadQuality();
     } catch (e: any) {
       setImportResult(e?.response?.data?.message || 'Import failed. Check the bbox format and try again.');
     } finally {
       setImporting(false);
     }
+  };
+
+  const runDedup = async () => {
+    setDedupBusy(true);
+    setDedupResult(null);
+    try {
+      const r = await communityService.cleanupDuplicateOrganizations();
+      setDedupResult(`Found ${r.groups} duplicate group${r.groups === 1 ? '' : 's'} — removed ${r.deleted} extra listing${r.deleted === 1 ? '' : 's'}.`);
+      await loadQuality();
+    } catch {
+      setDedupResult('Cleanup failed. Try again in a moment.');
+    } finally {
+      setDedupBusy(false);
+    }
+  };
+
+  const removeThinListing = (id: string, name: string) => {
+    Alert.alert('Remove listing', `Delete "${name}"? This can't be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeletingId(id);
+          try {
+            await communityService.deleteOrganization(id);
+            await loadQuality();
+          } catch {
+            Alert.alert("Couldn't delete", 'Please try again in a moment.');
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      },
+    ]);
   };
 
   if (loading)
@@ -122,6 +171,70 @@ export default function AdminScreen() {
           {importing ? <ActivityIndicator size="small" color="#10150d" /> : <Text style={s.resolveText}>Run import</Text>}
         </Pressable>
         {importResult && <Text style={s.importResult}>{importResult}</Text>}
+      </View>
+
+      <Text style={s.sectionTitle}>Field & vendor data quality</Text>
+      <View style={s.card}>
+        {qualityLoading ? (
+          <ActivityIndicator color="#A8C84A" />
+        ) : quality ? (
+          <>
+            <View style={s.qualityStats}>
+              <View style={s.qualityStat}>
+                <Text style={s.qualityNum}>{quality.total}</Text>
+                <Text style={s.qualityLabel}>TOTAL LISTINGS</Text>
+              </View>
+              <View style={s.qualityStat}>
+                <Text style={s.qualityNum}>{quality.missingContact}</Text>
+                <Text style={s.qualityLabel}>NO CONTACT INFO</Text>
+              </View>
+              <View style={s.qualityStat}>
+                <Text style={s.qualityNum}>{quality.missingAddress}</Text>
+                <Text style={s.qualityLabel}>NO ADDRESS</Text>
+              </View>
+            </View>
+            <Text style={s.body}>
+              Duplicate check groups unclaimed, imported listings by name and location (~500m) and keeps only
+              the most complete row in each group.
+            </Text>
+            <Pressable style={[s.review, dedupBusy && s.disabled]} onPress={runDedup} disabled={dedupBusy}>
+              {dedupBusy ? <ActivityIndicator size="small" color="#c6ced4" /> : <Text style={s.reviewText}>Find & remove duplicates</Text>}
+            </Pressable>
+            {dedupResult && <Text style={s.importResult}>{dedupResult}</Text>}
+
+            {quality.thinCount > 0 && (
+              <>
+                <Text style={[s.body, { marginTop: 16 }]}>
+                  {quality.thinCount} listing{quality.thinCount === 1 ? '' : 's'} with no address, phone, email, or
+                  website — nothing for a visitor to act on. Review and remove the ones that aren't worth keeping.
+                </Text>
+                {quality.thin.map((o) => (
+                  <View key={o.id} style={s.thinRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.thinName}>{o.name}</Text>
+                      <Text style={s.thinMeta}>
+                        {o.type} • {[o.city, o.region].filter(Boolean).join(', ') || 'No location'}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={s.dismiss}
+                      onPress={() => removeThinListing(o.id, o.name)}
+                      disabled={deletingId === o.id}
+                    >
+                      {deletingId === o.id ? (
+                        <ActivityIndicator size="small" color="#78838c" />
+                      ) : (
+                        <Text style={s.dismissText}>Delete</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                ))}
+              </>
+            )}
+          </>
+        ) : (
+          <Text style={s.empty}>Couldn't load the quality report.</Text>
+        )}
       </View>
 
       <Text style={s.sectionTitle}>Reports</Text>
@@ -222,4 +335,26 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   importResult: { color: '#A8C84A', fontSize: 12, marginTop: 12, fontWeight: '700' },
+  qualityStats: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  qualityStat: {
+    flex: 1,
+    backgroundColor: '#0e1417',
+    borderWidth: 1,
+    borderColor: '#232b31',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  qualityNum: { color: '#fff', fontSize: 22, fontWeight: '900' },
+  qualityLabel: { color: '#66707a', fontSize: 8, fontWeight: '900', letterSpacing: 0.8, marginTop: 4, textAlign: 'center' },
+  thinRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#232b31',
+  },
+  thinName: { color: '#e4e8ea', fontSize: 13, fontWeight: '800' },
+  thinMeta: { color: '#66707a', fontSize: 11, marginTop: 3, textTransform: 'capitalize' },
 });

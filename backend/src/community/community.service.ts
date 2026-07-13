@@ -81,6 +81,78 @@ export class CommunityService {
       .execute();
     return {deleted:result.affected||0};
   }
+  // Same real-world venue getting tagged more than once in OSM (a way for
+  // the boundary plus a separate node for the office, a re-submission years
+  // apart) predates the dedup check the importer now runs before creating a
+  // new row, so this sweeps up rows that were already duplicated before that
+  // check existed. Groups unclaimed, OSM-sourced rows by name + ~500m
+  // proximity, keeps whichever row in each group has the most filled-in
+  // fields (ties broken by whichever was created first), deletes the rest.
+  async cleanupDuplicateOrganizations(){
+    const rows=await this.organizations.createQueryBuilder('o')
+      .where('o.claimed_by_id IS NULL')
+      .andWhere("o.details ->> 'source' = 'osm'")
+      .andWhere('o.latitude IS NOT NULL')
+      .andWhere('o.longitude IS NOT NULL')
+      .getMany();
+
+    const completeness=(o:Organization)=>[o.address,o.phoneNumber,o.contactEmail,o.websiteUrl,o.description].filter(Boolean).length;
+    const byName=new Map<string,Organization[]>();
+    for(const o of rows){
+      const key=(o.name||'').trim().toLowerCase();
+      if(!key)continue;
+      (byName.get(key)||byName.set(key,[]).get(key)!).push(o);
+    }
+
+    const toDelete:string[]=[];
+    let groups=0;
+    for(const candidates of byName.values()){
+      if(candidates.length<2)continue;
+      const clusters:Organization[][]=[];
+      for(const o of candidates){
+        const lat=Number(o.latitude),lon=Number(o.longitude);
+        const cluster=clusters.find(c=>{
+          const r=c[0];
+          return Math.abs(Number(r.latitude)-lat)<0.005&&Math.abs(Number(r.longitude)-lon)<0.005;
+        });
+        if(cluster)cluster.push(o);else clusters.push([o]);
+      }
+      for(const cluster of clusters){
+        if(cluster.length<2)continue;
+        groups++;
+        const sorted=[...cluster].sort((a,b)=>completeness(b)-completeness(a)||new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime());
+        toDelete.push(...sorted.slice(1).map(o=>o.id));
+      }
+    }
+
+    if(!toDelete.length)return{groups:0,deleted:0};
+    const result=await this.organizations.createQueryBuilder().delete().whereInIds(toDelete).execute();
+    return{groups,deleted:result.affected||0};
+  }
+  // Aggregate view for admins to keep the directory usable — how many
+  // listings are missing enough info to be worth much, plus a capped sample
+  // to review/enrich/remove rather than every thin listing at once.
+  async organizationQualityReport(){
+    const [total,missingContact,missingAddress]=await Promise.all([
+      this.organizations.count(),
+      this.organizations.count({where:[{websiteUrl:IsNull(),phoneNumber:IsNull(),contactEmail:IsNull()}]}),
+      this.organizations.count({where:{address:IsNull()}}),
+    ]);
+    const thin=await this.organizations.createQueryBuilder('o')
+      .where('o.website_url IS NULL')
+      .andWhere('o.phone_number IS NULL')
+      .andWhere('o.contact_email IS NULL')
+      .andWhere('o.address IS NULL')
+      .orderBy('o.name','ASC')
+      .take(100)
+      .getMany();
+    return {total,missingContact,missingAddress,thinCount:thin.length,thin};
+  }
+  async deleteOrganization(id:string){
+    const result=await this.organizations.delete(id);
+    if(!result.affected)throw new NotFoundException('Organization not found');
+    return{message:'Organization deleted'};
+  }
 
   async requestOrganizationClaim(userId:string,organizationId:string,note?:string){
     const org=await this.organizations.findOneBy({id:organizationId});
