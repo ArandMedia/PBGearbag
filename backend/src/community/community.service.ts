@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
@@ -62,7 +62,10 @@ export class CommunityService {
   async getOrganization(slug:string){const org=await this.organizations.findOne({where:{slug}});if(!org)throw new NotFoundException('Organization not found');const followerCount=await this.orgFollows.count({where:{organizationId:org.id}});return {...org,followerCount}}
   async suggestOrganization(userId:string,data:Partial<Organization>){const slug=await this.uniqueSlug(this.organizations,data.name||'organization');return this.organizations.save(this.organizations.create({...data,slug,isVerified:false,claimedById:undefined,details:{...data.details,suggestedBy:userId}}))}
   organizationEvents(organizationId:string){return this.events.find({where:{organizationId,status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:20})}
-  importOsmFields(bbox:string){return runOsmImport(this.organizations,bbox)}
+  async importOsmFields(bbox:string){
+    try{return await runOsmImport(this.organizations,bbox)}
+    catch(error:any){throw new BadGatewayException(`OSM import failed: ${error?.message||error}`)}
+  }
 
   async requestOrganizationClaim(userId:string,organizationId:string,note?:string){
     const org=await this.organizations.findOneBy({id:organizationId});

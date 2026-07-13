@@ -31,7 +31,13 @@ function overpassQuery(bbox: string) {
 async function fetchOverpass(bbox: string, attempt = 1): Promise<OverpassElement[]> {
   const res = await fetch(OVERPASS_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    // Overpass's usage policy asks for a descriptive User-Agent identifying
+    // the calling application; requests without one were observed getting
+    // rejected outright (406) even though the query itself was valid.
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "PBGearbag/1.0 (+https://pbgearbag.com; field directory import)",
+    },
     body: `data=${encodeURIComponent(overpassQuery(bbox))}`,
   });
   if (!res.ok) {
