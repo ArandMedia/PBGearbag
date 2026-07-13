@@ -205,7 +205,6 @@ const s = StyleSheet.create({
     color: "#AEB7BE",
     fontSize: 18,
     lineHeight: 27,
-    maxWidth: 620,
     marginTop: 20,
     textAlign: "left",
     maxWidth: 600,

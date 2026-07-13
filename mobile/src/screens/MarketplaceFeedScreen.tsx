@@ -20,8 +20,8 @@ import {
   ListingFilters,
   marketplaceService,
 } from "../services/marketplace.service";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 
-const LIME = "#A8C84A";
 const categories = [
   [undefined, "All gear"],
   [ListingCategory.MARKER, "Markers"],
@@ -61,8 +61,12 @@ function Chip({
   onPress: () => void;
   count?: number;
 }) {
+  const { accent } = useTheme();
   return (
-    <Pressable onPress={onPress} style={[s.chip, active && s.chipActive]}>
+    <Pressable
+      onPress={onPress}
+      style={[s.chip, active && { backgroundColor: accent, borderColor: accent }]}
+    >
       <Text style={[s.chipText, active && s.chipTextActive]}>
         {label}
         {count !== undefined ? `  ${count}` : ""}
@@ -72,6 +76,7 @@ function Chip({
 }
 
 export default function MarketplaceFeedScreen({ navigation }: any) {
+  const { accent: LIME } = useTheme();
   const { width } = useWindowDimensions();
   const columns = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
   const compact = width < 720;
@@ -215,7 +220,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
             {item.title}
           </Text>
           <View style={s.meta}>
-            {item.brand && <Text style={s.brand}>{item.brand}</Text>}
+            {item.brand && <Text style={[s.brand, { color: LIME }]}>{item.brand}</Text>}
             <Text style={s.condition}>{item.condition.replace("_", " ")}</Text>
           </View>
           <Text style={s.price}>
@@ -247,7 +252,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
       <View style={s.top}>
         <View style={s.marketHeader}>
           <View>
-            <Text style={s.kicker}>PBG EXCHANGE</Text>
+            <Text style={[s.kicker, { color: LIME }]}>PBG EXCHANGE</Text>
             <Text style={[s.marketTitle, compact && { fontSize: 27 }]}>
               Find exactly what you play.
             </Text>
@@ -258,7 +263,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
           </View>
           {!compact && (
             <View style={s.live}>
-              <View style={s.liveDot} />
+              <View style={[s.liveDot, { backgroundColor: LIME }]} />
               <Text style={s.liveText}>MARKET LIVE</Text>
             </View>
           )}
@@ -277,14 +282,17 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
             />
             <Pressable
               onPress={() => setAppliedSearch(search.trim())}
-              style={s.searchButton}
+              style={[s.searchButton, { backgroundColor: LIME }]}
             >
               <Text style={s.searchButtonText}>SEARCH</Text>
             </Pressable>
           </View>
           <Pressable
             onPress={() => setShowFilters((v) => !v)}
-            style={[s.filterButton, showFilters && s.filterButtonActive]}
+            style={[
+              s.filterButton,
+              showFilters && { backgroundColor: LIME, borderColor: LIME },
+            ]}
           >
             <Text
               style={[s.filterButtonText, showFilters && { color: "#0B0F0D" }]}
@@ -311,7 +319,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
           <View style={s.filterPanel}>
             <View style={s.filterHeading}>
               <View>
-                <Text style={s.filterEyebrow}>REFINE THE EXCHANGE</Text>
+                <Text style={[s.filterEyebrow, { color: LIME }]}>REFINE THE EXCHANGE</Text>
                 <Text style={s.filterTitle}>{total} matching listings</Text>
               </View>
               {activeCount > 0 && (
@@ -465,7 +473,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
               <Text style={s.emptyBody}>
                 Try widening the price range or clearing a filter.
               </Text>
-              <Pressable onPress={reset} style={s.resetButton}>
+              <Pressable onPress={reset} style={[s.resetButton, { backgroundColor: LIME }]}>
                 <Text style={s.resetText}>RESET FILTERS</Text>
               </Pressable>
             </View>
@@ -473,7 +481,7 @@ export default function MarketplaceFeedScreen({ navigation }: any) {
         />
       )}
       <TouchableOpacity
-        style={s.fab}
+        style={[s.fab, { backgroundColor: LIME }]}
         onPress={() => navigation.navigate("CreateListing")}
       >
         <Text style={s.fabText}>＋</Text>
@@ -493,7 +501,7 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  kicker: { color: LIME, fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
+  kicker: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
   marketTitle: {
     color: "#fff",
     fontSize: 34,
@@ -513,7 +521,7 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIME },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DEFAULT_ACCENT },
   liveText: {
     color: "#c7efa6",
     fontSize: 9,
@@ -539,7 +547,7 @@ const s = StyleSheet.create({
     marginRight: 5,
     paddingHorizontal: 18,
     borderRadius: 9,
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     justifyContent: "center",
   },
   searchButtonText: {
@@ -556,7 +564,6 @@ const s = StyleSheet.create({
     borderColor: "#374047",
     justifyContent: "center",
   },
-  filterButtonActive: { backgroundColor: LIME, borderColor: LIME },
   filterButtonText: {
     color: "#DCE2E5",
     fontSize: 10,
@@ -572,7 +579,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#30383E",
   },
-  chipActive: { backgroundColor: LIME, borderColor: LIME },
   chipText: { color: "#A8B1B7", fontSize: 12, fontWeight: "700" },
   chipTextActive: { color: "#0C110B", fontWeight: "900" },
   filterPanel: {
@@ -590,7 +596,7 @@ const s = StyleSheet.create({
     marginBottom: 18,
   },
   filterEyebrow: {
-    color: LIME,
+    color: DEFAULT_ACCENT,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1.4,
@@ -711,7 +717,7 @@ const s = StyleSheet.create({
     marginBottom: 7,
   },
   meta: { flexDirection: "row", gap: 8, alignItems: "center" },
-  brand: { fontSize: 12, color: LIME, fontWeight: "800" },
+  brand: { fontSize: 12, color: DEFAULT_ACCENT, fontWeight: "800" },
   condition: { fontSize: 11, color: "#89949A", textTransform: "capitalize" },
   price: { fontSize: 21, fontWeight: "900", color: "#fff", marginTop: 11 },
   obo: { fontSize: 11, color: "#8C979D" },
@@ -743,7 +749,7 @@ const s = StyleSheet.create({
   emptyTitle: { color: "#fff", fontSize: 20, fontWeight: "900" },
   emptyBody: { color: "#79858C", marginTop: 7 },
   resetButton: {
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     borderRadius: 9,
     paddingHorizontal: 17,
     paddingVertical: 11,
@@ -757,7 +763,7 @@ const s = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",

@@ -22,15 +22,16 @@ import { communityService, Gearbag } from "../services/community.service";
 import { Listing, marketplaceService } from "../services/marketplace.service";
 import { ProfileWidget, widgetsService } from "../services/widgets.service";
 import { WidgetRenderer } from "../components/WidgetCards";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 
-const TURF = "#A8C84A",
-  INK = "#0A0E0F",
+const INK = "#0A0E0F",
   PANEL = "#121819";
 const defaultCover = require("../../assets/brand/pbgearbag-hero-classic-v2.jpg");
 
 export default function PublicProfileScreen({ route, navigation }: any) {
   const uId = route.params?.userId;
   const { user: viewer } = useAuth();
+  const { accent: TURF } = useTheme();
   const isSelf = viewer?.id === uId;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,21 +164,21 @@ export default function PublicProfileScreen({ route, navigation }: any) {
           </ImageBackground>
         )}
         <View style={s.coverShadeThin} />
-        <Text style={s.coverLabel}>PBG PLAYER</Text>
+        <Text style={[s.coverLabel, { color: TURF }]}>PBG PLAYER</Text>
       </View>
       <View style={s.identity}>
         <View style={s.avatar}>
           {user.avatarUrl ? (
             <Image source={{ uri: user.avatarUrl }} style={s.avatarImage} />
           ) : (
-            <Text style={s.avatarText}>{name.slice(0, 2).toUpperCase()}</Text>
+            <Text style={[s.avatarText, { color: TURF }]}>{name.slice(0, 2).toUpperCase()}</Text>
           )}
         </View>
       </View>
       <View style={s.nameLine}>
         <Text style={s.name}>{name}</Text>
         {user.isVerified && (
-          <View style={s.verified}>
+          <View style={[s.verified, { backgroundColor: TURF }]}>
             <Ionicons name="checkmark" size={10} color="#10140D" />
             <Text style={s.verifiedText}>VERIFIED</Text>
           </View>
@@ -190,7 +191,7 @@ export default function PublicProfileScreen({ route, navigation }: any) {
       {user.bio && <Text style={s.bio}>{user.bio}</Text>}
       <View style={s.tags}>
         {user.playStyle?.map((x) => (
-          <Text key={x} style={s.tag}>
+          <Text key={x} style={[s.tag, { color: TURF }]}>
             {x.replace("_", " ").toUpperCase()}
           </Text>
         ))}
@@ -239,7 +240,7 @@ export default function PublicProfileScreen({ route, navigation }: any) {
       <View style={s.actions}>
         {!isSelf && (
           <Pressable
-            style={[s.follow, following && s.following]}
+            style={[s.follow, following && { backgroundColor: TURF, borderColor: TURF }]}
             onPress={toggleFollow}
           >
             <Ionicons
@@ -247,7 +248,7 @@ export default function PublicProfileScreen({ route, navigation }: any) {
               color={following ? "#10140D" : TURF}
               size={16}
             />
-            <Text style={[s.followText, following && { color: "#10140D" }]}>
+            <Text style={[s.followText, { color: TURF }, following && { color: "#10140D" }]}>
               {following ? "FOLLOWING" : "FOLLOW"}
             </Text>
           </Pressable>
@@ -376,7 +377,7 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(5,8,8,.35)",
   },
   coverLabel: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1.5,
@@ -399,7 +400,7 @@ const s = StyleSheet.create({
     alignSelf: "center",
   },
   avatarImage: { width: "100%", height: "100%", borderRadius: 20 },
-  avatarText: { color: TURF, fontSize: 30, fontWeight: "900" },
+  avatarText: { color: DEFAULT_ACCENT, fontSize: 30, fontWeight: "900" },
   nameLine: {
     flexDirection: "row",
     alignItems: "center",
@@ -417,7 +418,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 10,
@@ -444,7 +445,7 @@ const s = StyleSheet.create({
     marginTop: 14,
   },
   tag: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     borderWidth: 1,
     borderColor: "#506833",
     paddingHorizontal: 7,
@@ -495,8 +496,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 11,
   },
-  following: { backgroundColor: TURF, borderColor: TURF },
-  followText: { color: TURF, fontWeight: "900", fontSize: 10 },
+  followText: { color: DEFAULT_ACCENT, fontWeight: "900", fontSize: 10 },
   share: {
     borderWidth: 1,
     borderColor: "#3A4541",

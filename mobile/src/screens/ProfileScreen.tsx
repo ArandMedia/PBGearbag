@@ -22,9 +22,9 @@ import { ProfileWidget, widgetsService } from "../services/widgets.service";
 import { RelationshipCounts, socialService } from "../services/social.service";
 import { WidgetRenderer } from "../components/WidgetCards";
 import { computeAutoAchievements } from "../utils/achievements";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 
-const TURF = "#A8C84A",
-  INK = "#0A0E0F",
+const INK = "#0A0E0F",
   PANEL = "#121819",
   ORANGE = "#E8743B";
 const defaultCover = require("../../assets/brand/pbgearbag-hero-classic-v2.jpg");
@@ -98,12 +98,13 @@ function Action({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const { accent } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         s.action,
-        primary && s.actionPrimary,
+        primary && { backgroundColor: accent, borderColor: accent },
         pressed && { opacity: 0.72 },
       ]}
     >
@@ -133,6 +134,7 @@ function Stat({
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const { accent: TURF } = useTheme();
   const { width } = useWindowDimensions();
   const canvasWidth = width >= 900 ? width - 272 : width;
   const compact = canvasWidth < 920;
@@ -289,7 +291,7 @@ export default function ProfileScreen({ navigation }: any) {
         )}
         <View style={s.coverShade} />
         <View style={s.coverMeta}>
-          <Text style={s.coverKicker}>PLAYER PROFILE</Text>
+          <Text style={[s.coverKicker, { color: TURF }]}>PLAYER PROFILE</Text>
           <Text style={s.coverHandle}>@{user.username}</Text>
         </View>
       </View>
@@ -299,18 +301,18 @@ export default function ProfileScreen({ navigation }: any) {
             <Image source={{ uri: user.avatarUrl }} style={s.avatar} />
           ) : (
             <View style={s.avatarFallback}>
-              <Text style={s.avatarText}>
+              <Text style={[s.avatarText, { color: TURF }]}>
                 {displayName.slice(0, 2).toUpperCase()}
               </Text>
             </View>
           )}
-          <View style={s.online} />
+          <View style={[s.online, { backgroundColor: TURF }]} />
         </View>
         <View style={s.identityText}>
           <View style={s.nameLine}>
             <Text style={s.name}>{displayName}</Text>
             {user.isVerified && (
-              <View style={s.verified}>
+              <View style={[s.verified, { backgroundColor: TURF }]}>
                 <Ionicons name="checkmark" size={10} color="#10140D" />
                 <Text style={s.verifiedText}>VERIFIED</Text>
               </View>
@@ -334,7 +336,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Pressable
               onPress={() => navigation.getParent()?.navigate("EditProfile")}
             >
-              <Text style={s.addBio}>＋ Add a short player bio</Text>
+              <Text style={[s.addBio, { color: TURF }]}>＋ Add a short player bio</Text>
             </Pressable>
           )}
           <View style={s.tags}>
@@ -423,7 +425,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Pressable
               onPress={() => navigation.getParent()?.navigate("EditProfile")}
             >
-              <Text style={s.textLink}>EDIT DETAILS</Text>
+              <Text style={[s.textLink, { color: TURF }]}>EDIT DETAILS</Text>
             </Pressable>
           </View>
           <View style={s.playerGrid}>
@@ -475,7 +477,7 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={s.sectionTitle}>{loadout.label}</Text>
             </View>
             <Pressable onPress={() => navigation.navigate("Gearbag")}>
-              <Text style={s.textLink}>OPEN GEARBAG →</Text>
+              <Text style={[s.textLink, { color: TURF }]}>OPEN GEARBAG →</Text>
             </Pressable>
           </View>
           <View style={s.loadoutIntro}>
@@ -487,7 +489,7 @@ export default function ProfileScreen({ navigation }: any) {
                     key={item}
                     style={[
                       s.essential,
-                      ownedCategories.has(item) && s.essentialOwned,
+                      ownedCategories.has(item) && { backgroundColor: TURF, borderColor: TURF },
                     ]}
                   >
                     <Ionicons
@@ -527,7 +529,7 @@ export default function ProfileScreen({ navigation }: any) {
                   }
                 >
                   <View style={s.gearIcon}>
-                    <Text style={s.gearIconText}>
+                    <Text style={[s.gearIconText, { color: TURF }]}>
                       {item.category.slice(0, 2).toUpperCase()}
                     </Text>
                   </View>
@@ -686,7 +688,7 @@ export default function ProfileScreen({ navigation }: any) {
                   <Text numberOfLines={1} style={s.marketName}>
                     {x.title}
                   </Text>
-                  <Text style={s.marketPrice}>
+                  <Text style={[s.marketPrice, { color: TURF }]}>
                     ${Number(x.price).toLocaleString()}
                   </Text>
                 </View>
@@ -695,7 +697,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Pressable
               onPress={() => navigation.getParent()?.navigate("CreateListing")}
             >
-              <Text style={s.listLink}>＋ LIST AN ITEM</Text>
+              <Text style={[s.listLink, { color: TURF }]}>＋ LIST AN ITEM</Text>
             </Pressable>
           </View>
           <View style={s.account}>
@@ -724,7 +726,7 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
         <Pressable onPress={openCustomizeWidgets}>
-          <Text style={s.textLink}>CUSTOMIZE →</Text>
+          <Text style={[s.textLink, { color: TURF }]}>CUSTOMIZE →</Text>
         </Pressable>
       </View>
       {widgets.length ? (
@@ -761,7 +763,7 @@ export default function ProfileScreen({ navigation }: any) {
               achievements, social links, and more — $4/mo or $24/yr.
             </Text>
           </View>
-          <Text style={s.textLink}>UPGRADE →</Text>
+          <Text style={[s.textLink, { color: TURF }]}>UPGRADE →</Text>
         </Pressable>
       )}
     </ScrollView>
@@ -827,7 +829,7 @@ const s = StyleSheet.create({
   },
   coverMeta: { position: "absolute", left: 24, top: 22 },
   coverKicker: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1.6,
@@ -863,7 +865,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: TURF, fontSize: 34, fontWeight: "900" },
+  avatarText: { color: DEFAULT_ACCENT, fontSize: 34, fontWeight: "900" },
   online: {
     position: "absolute",
     right: 4,
@@ -871,7 +873,7 @@ const s = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     borderWidth: 3,
     borderColor: INK,
   },
@@ -892,7 +894,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 10,
@@ -946,7 +948,7 @@ const s = StyleSheet.create({
     maxWidth: 650,
     marginTop: 10,
   },
-  addBio: { color: TURF, fontSize: 12, fontWeight: "800", marginTop: 9 },
+  addBio: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "800", marginTop: 9 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   tag: {
     color: "#ABB4B0",
@@ -973,7 +975,6 @@ const s = StyleSheet.create({
     gap: 7,
     alignSelf: "flex-start",
   },
-  actionPrimary: { backgroundColor: TURF, borderColor: TURF },
   actionText: {
     color: "#D6DDDA",
     fontSize: 10,
@@ -1033,7 +1034,7 @@ const s = StyleSheet.create({
     fontWeight: "900",
     marginTop: 4,
   },
-  textLink: { color: TURF, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  textLink: { color: DEFAULT_ACCENT, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
   playerGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1099,7 +1100,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 4,
   },
-  essentialOwned: { backgroundColor: TURF, borderColor: TURF },
   essentialText: {
     color: "#7D8984",
     fontSize: 7,
@@ -1146,7 +1146,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  gearIconText: { color: TURF, fontSize: 9, fontWeight: "900" },
+  gearIconText: { color: DEFAULT_ACCENT, fontSize: 9, fontWeight: "900" },
   gearName: { color: "#E4E8E5", fontSize: 13, fontWeight: "900" },
   gearMeta: {
     color: "#6F7B77",
@@ -1224,9 +1224,9 @@ const s = StyleSheet.create({
     backgroundColor: "#222B2C",
   },
   marketName: { color: "#D7DDDA", fontSize: 11, fontWeight: "800" },
-  marketPrice: { color: TURF, fontSize: 11, fontWeight: "900", marginTop: 3 },
+  marketPrice: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900", marginTop: 3 },
   listLink: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.8,

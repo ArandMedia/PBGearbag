@@ -20,8 +20,9 @@ import {
   FeedPost,
   socialService,
 } from "../services/social.service";
-const TURF = "#A8C84A",
-  INK = "#0A0E0F",
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
+const INK = "#0A0E0F",
   PANEL = "#121819";
 const postTypes = [
   ["clip", "Game clip"],
@@ -40,6 +41,7 @@ function Avatar({
   url?: string;
   size?: number;
 }) {
+  const { accent } = useTheme();
   return url ? (
     <Image
       source={{ uri: url }}
@@ -49,7 +51,7 @@ function Avatar({
     <View
       style={[s.avatar, { width: size, height: size, borderRadius: size / 3 }]}
     >
-      <Text style={s.avatarText}>{name.slice(0, 2).toUpperCase()}</Text>
+      <Text style={[s.avatarText, { color: accent }]}>{name.slice(0, 2).toUpperCase()}</Text>
     </View>
   );
 }
@@ -62,6 +64,7 @@ function PostCard({
   reload: () => void;
   onProfile: (id: string) => void;
 }) {
+  const { accent: TURF } = useTheme();
   const [open, setOpen] = useState(false),
     [comments, setComments] = useState<FeedComment[]>([]),
     [comment, setComment] = useState("");
@@ -89,17 +92,20 @@ function PostCard({
           </Text>
         </View>
         <Pressable
-          style={[s.followButton, post.isFollowing && s.followingButton]}
+          style={[
+            s.followButton,
+            post.isFollowing && { backgroundColor: TURF, borderColor: TURF },
+          ]}
           onPress={async () => {
             await socialService.follow(post.author.id);
             reload();
           }}
         >
-          <Text style={[s.followText, post.isFollowing && s.followingText]}>
+          <Text style={[s.followText, { color: TURF }, post.isFollowing && s.followingText]}>
             {post.isFollowing ? "FOLLOWING" : "FOLLOW"}
           </Text>
         </Pressable>
-        <Text style={s.typeBadge}>
+        <Text style={[s.typeBadge, { color: TURF }]}>
           {post.type.replace("_", " ").toUpperCase()}
         </Text>
       </Pressable>
@@ -117,7 +123,10 @@ function PostCard({
         ))}
       <View style={s.engagement}>
         <Pressable
-          style={[s.engage, !!post.myReaction && s.engageOn]}
+          style={[
+            s.engage,
+            !!post.myReaction && { backgroundColor: hexToRgba(TURF, 0.08) },
+          ]}
           onPress={async () => {
             await socialService.react(post.id);
             reload();
@@ -194,6 +203,7 @@ function PostCard({
 }
 export default function FieldFeedScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { accent: TURF } = useTheme();
   const [posts, setPosts] = useState<FeedPost[]>([]),
     [loading, setLoading] = useState(true),
     [refreshing, setRefreshing] = useState(false),
@@ -260,7 +270,7 @@ export default function FieldFeedScreen({ navigation }: any) {
       }
     >
       <View style={s.feedHero}>
-        <Text style={s.kicker}>FIELD FEED</Text>
+        <Text style={[s.kicker, { color: TURF }]}>FIELD FEED</Text>
         <Text style={s.title}>Paintball, as it happened.</Text>
         <Text style={s.subtitle}>
           Clips, field reports, gear, and the moments worth talking about.
@@ -296,9 +306,13 @@ export default function FieldFeedScreen({ navigation }: any) {
                 <Pressable
                   key={v}
                   onPress={() => setType(v)}
-                  style={[s.type, type === v && s.typeOn]}
+                  style={[
+                    s.type,
+                    type === v && s.typeOn,
+                    type === v && { backgroundColor: hexToRgba(TURF, 0.1) },
+                  ]}
                 >
-                  <Text style={[s.typeText, type === v && s.typeTextOn]}>
+                  <Text style={[s.typeText, type === v && { color: TURF }]}>
                     {l}
                   </Text>
                 </Pressable>
@@ -337,6 +351,7 @@ export default function FieldFeedScreen({ navigation }: any) {
                 disabled={!body.trim() || posting}
                 style={[
                   s.publish,
+                  { backgroundColor: TURF },
                   (!body.trim() || posting) && { opacity: 0.45 },
                 ]}
                 onPress={publish}
@@ -354,20 +369,26 @@ export default function FieldFeedScreen({ navigation }: any) {
       <View style={s.feedTabs}>
         <Pressable
           onPress={() => setFeedMode("forYou")}
-          style={[s.feedTab, feedMode === "forYou" && s.feedTabOn]}
+          style={[
+            s.feedTab,
+            feedMode === "forYou" && { borderBottomColor: TURF },
+          ]}
         >
           <Text
-            style={[s.feedTabText, feedMode === "forYou" && s.feedTabTextOn]}
+            style={[s.feedTabText, feedMode === "forYou" && { color: TURF }]}
           >
             FOR YOU
           </Text>
         </Pressable>
         <Pressable
           onPress={() => setFeedMode("following")}
-          style={[s.feedTab, feedMode === "following" && s.feedTabOn]}
+          style={[
+            s.feedTab,
+            feedMode === "following" && { borderBottomColor: TURF },
+          ]}
         >
           <Text
-            style={[s.feedTabText, feedMode === "following" && s.feedTabTextOn]}
+            style={[s.feedTabText, feedMode === "following" && { color: TURF }]}
           >
             FOLLOWING
           </Text>
@@ -412,7 +433,7 @@ const s = StyleSheet.create({
     paddingBottom: 90,
   },
   feedHero: { marginBottom: 22 },
-  kicker: { color: TURF, fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
+  kicker: { color: DEFAULT_ACCENT, fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
   title: {
     color: "#F3F1E8",
     fontSize: 35,
@@ -434,7 +455,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: TURF, fontWeight: "900", fontSize: 11 },
+  avatarText: { color: DEFAULT_ACCENT, fontWeight: "900", fontSize: 11 },
   prompt: {
     flex: 1,
     height: 42,
@@ -467,9 +488,8 @@ const s = StyleSheet.create({
     borderColor: "#303A37",
     borderRadius: 14,
   },
-  typeOn: { borderColor: "#6F8D35", backgroundColor: "rgba(168,200,74,.1)" },
+  typeOn: { borderColor: "#6F8D35" },
   typeText: { color: "#7C8783", fontSize: 9, fontWeight: "800" },
-  typeTextOn: { color: TURF },
   bodyInput: {
     minHeight: 95,
     color: "#E0E5E2",
@@ -501,7 +521,7 @@ const s = StyleSheet.create({
   addMedia: { flexDirection: "row", alignItems: "center", gap: 6 },
   addMediaText: { color: "#AAB3AF", fontSize: 10, fontWeight: "800" },
   publish: {
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     minHeight: 38,
     paddingHorizontal: 15,
     borderRadius: 8,
@@ -533,14 +553,12 @@ const s = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  feedTabOn: { borderBottomColor: TURF },
   feedTabText: {
     color: "#68736F",
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1,
   },
-  feedTabTextOn: { color: TURF },
   feedLabelText: {
     color: "#74807B",
     fontSize: 8,
@@ -572,16 +590,15 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     marginRight: 6,
   },
-  followingButton: { backgroundColor: TURF, borderColor: TURF },
   followText: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     fontSize: 7,
     fontWeight: "900",
     letterSpacing: 0.6,
   },
   followingText: { color: "#10140D" },
   typeBadge: {
-    color: TURF,
+    color: DEFAULT_ACCENT,
     fontSize: 7,
     fontWeight: "900",
     letterSpacing: 0.8,
@@ -614,7 +631,6 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 8,
   },
-  engageOn: { backgroundColor: "rgba(168,200,74,.08)" },
   engageText: {
     color: "#7C8783",
     fontSize: 8,

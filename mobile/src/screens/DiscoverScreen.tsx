@@ -18,11 +18,12 @@ import {
   Team,
 } from "../services/community.service";
 import { paintballAmenities } from "../constants/paintball";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
+import { hexToRgba } from "../utils/color";
 
 type Mode = "events" | "fields" | "teams";
 type DateFilter = "all" | "30" | "90";
 type PriceFilter = "all" | "free" | "paid";
-const LIME = "#A8C84A";
 const paintballEventTypes = [
   ["speedball", "Speedball"],
   ["tournament", "Tournament"],
@@ -68,9 +69,10 @@ function Chip({
   on: boolean;
   press: () => void;
 }) {
+  const { accent } = useTheme();
   return (
-    <Pressable onPress={press} style={[s.chip, on && s.chipOn]}>
-      <Text style={[s.chipText, on && s.chipTextOn]}>{label}</Text>
+    <Pressable onPress={press} style={[s.chip, on && { backgroundColor: hexToRgba(accent, 0.12), borderColor: accent }]}>
+      <Text style={[s.chipText, on && { color: accent, fontWeight: "900" as const }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -99,6 +101,7 @@ function Search({
 }
 
 export default function DiscoverScreen({ navigation }: any) {
+  const { accent: LIME } = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 700;
   const [mode, setMode] = useState<Mode>("events");
@@ -306,7 +309,7 @@ export default function DiscoverScreen({ navigation }: any) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={s.hero}>
-        <Text style={s.kicker}>THE PAINTBALL MAP</Text>
+        <Text style={[s.kicker, { color: LIME }]}>THE PAINTBALL MAP</Text>
         <Text style={[s.title, compact && { fontSize: 32 }]}>
           Find your next place to play.
         </Text>
@@ -319,7 +322,7 @@ export default function DiscoverScreen({ navigation }: any) {
         {(["events", "fields", "teams"] as Mode[]).map((x) => (
           <Pressable
             key={x}
-            style={[s.tab, mode === x && s.tabOn]}
+            style={[s.tab, mode === x && { backgroundColor: LIME, borderColor: LIME }]}
             onPress={() => setMode(x)}
           >
             <Text style={[s.tabText, mode === x && s.tabTextOn]}>
@@ -343,7 +346,7 @@ export default function DiscoverScreen({ navigation }: any) {
             placeholder={`Search ${mode} by name, type, or details…`}
           />
           <View style={s.locationSearch}>
-            <Text style={s.pin}>⌖</Text>
+            <Text style={[s.pin, { color: LIME }]}>⌖</Text>
             <TextInput
               style={s.searchInput}
               value={location}
@@ -415,7 +418,7 @@ export default function DiscoverScreen({ navigation }: any) {
                 </View>
                 <View style={s.eventPriceRow}>
                   <View style={s.priceInputWrap}>
-                    <Text style={s.currency}>$</Text>
+                    <Text style={[s.currency, { color: LIME }]}>$</Text>
                     <TextInput
                       style={s.priceInput}
                       value={minEventPrice}
@@ -427,7 +430,7 @@ export default function DiscoverScreen({ navigation }: any) {
                   </View>
                   <Text style={s.priceTo}>TO</Text>
                   <View style={s.priceInputWrap}>
-                    <Text style={s.currency}>$</Text>
+                    <Text style={[s.currency, { color: LIME }]}>$</Text>
                     <TextInput
                       style={s.priceInput}
                       value={maxEventPrice}
@@ -467,7 +470,7 @@ export default function DiscoverScreen({ navigation }: any) {
                     <Text style={s.label}>PAINTBALL PLACE TYPE</Text>
                     <Text style={s.collapseSummary}>{selectedPlaceLabel}</Text>
                   </View>
-                  <Text style={s.chevron}>{placeTypesOpen ? "⌃" : "⌄"}</Text>
+                  <Text style={[s.chevron, { color: LIME }]}>{placeTypesOpen ? "⌃" : "⌄"}</Text>
                 </Pressable>
                 {placeTypesOpen && (
                   <View style={s.collapseBody}>
@@ -512,13 +515,13 @@ export default function DiscoverScreen({ navigation }: any) {
                   </View>
                   <View style={s.collapseRight}>
                     {amenities.length > 0 && (
-                      <View style={s.selectionCount}>
+                      <View style={[s.selectionCount, { backgroundColor: LIME }]}>
                         <Text style={s.selectionCountText}>
                           {amenities.length}
                         </Text>
                       </View>
                     )}
-                    <Text style={s.chevron}>{amenitiesOpen ? "⌃" : "⌄"}</Text>
+                    <Text style={[s.chevron, { color: LIME }]}>{amenitiesOpen ? "⌃" : "⌄"}</Text>
                   </View>
                 </Pressable>
                 {amenitiesOpen && (
@@ -534,7 +537,7 @@ export default function DiscoverScreen({ navigation }: any) {
                         <View />
                       )}
                       <Pressable
-                        style={s.doneButton}
+                        style={[s.doneButton, { backgroundColor: LIME }]}
                         onPress={() => setAmenitiesOpen(false)}
                       >
                         <Text style={s.doneText}>DONE</Text>
@@ -656,7 +659,7 @@ export default function DiscoverScreen({ navigation }: any) {
             )}
             <View style={s.overlay} />
             <View style={s.featureBody}>
-              <Text style={s.meta}>
+              <Text style={[s.meta, { color: LIME }]}>
                 {e.eventType.toUpperCase()} •{" "}
                 {new Date(e.startsAt).toLocaleDateString()}
               </Text>
@@ -670,7 +673,7 @@ export default function DiscoverScreen({ navigation }: any) {
               </Text>
               <View style={s.actions}>
                 <Pressable
-                  style={s.primary}
+                  style={[s.primary, { backgroundColor: LIME }]}
                   onPress={async () => {
                     await communityService.rsvp(e.id, "going");
                     Alert.alert(
@@ -709,14 +712,14 @@ export default function DiscoverScreen({ navigation }: any) {
             }
           >
             <View style={s.rowIcon}>
-              <Text style={s.rowIconText}>
+              <Text style={[s.rowIconText, { color: LIME }]}>
                 {f.type === "field" ? "FLD" : "PBG"}
               </Text>
             </View>
             <View style={s.rowBody}>
               <View style={s.nameRow}>
                 <Text style={s.rowTitle}>{f.name}</Text>
-                {f.isVerified && <Text style={s.verified}>✓ VERIFIED</Text>}
+                {f.isVerified && <Text style={[s.verified, { color: LIME }]}>✓ VERIFIED</Text>}
               </View>
               <Text style={s.body}>{f.description}</Text>
               <Text style={s.place}>
@@ -734,7 +737,7 @@ export default function DiscoverScreen({ navigation }: any) {
                   ))}
               </View>
             </View>
-            <Text style={s.arrow}>→</Text>
+            <Text style={[s.arrow, { color: LIME }]}>→</Text>
           </Pressable>
         ))}
       {mode === "teams" &&
@@ -749,7 +752,7 @@ export default function DiscoverScreen({ navigation }: any) {
             }
           >
             <View style={s.rowIcon}>
-              <Text style={s.rowIconText}>
+              <Text style={[s.rowIconText, { color: LIME }]}>
                 {t.name.slice(0, 2).toUpperCase()}
               </Text>
             </View>
@@ -784,12 +787,12 @@ export default function DiscoverScreen({ navigation }: any) {
         ))}
       {resultCount === 0 && (
         <View style={s.empty}>
-          <Text style={s.emptyIcon}>⌖</Text>
+          <Text style={[s.emptyIcon, { color: LIME }]}>⌖</Text>
           <Text style={s.emptyTitle}>Nothing matches those filters yet.</Text>
           <Text style={s.emptyBody}>
             Try a nearby region or broaden your selections.
           </Text>
-          <Pressable style={s.primary} onPress={reset}>
+          <Pressable style={[s.primary, { backgroundColor: LIME }]} onPress={reset}>
             <Text style={s.primaryText}>RESET SEARCH</Text>
           </Pressable>
         </View>
@@ -814,7 +817,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   hero: { paddingBottom: 4 },
-  kicker: { color: LIME, fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
+  kicker: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
   title: {
     color: "#fff",
     fontSize: 40,
@@ -835,7 +838,6 @@ const s = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 22,
   },
-  tabOn: { backgroundColor: LIME, borderColor: LIME },
   tabText: {
     color: "#89949A",
     fontSize: 10,
@@ -876,7 +878,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 13,
   },
   searchIcon: { color: "#7C888E", fontSize: 22 },
-  pin: { color: LIME, fontSize: 17 },
+  pin: { color: DEFAULT_ACCENT, fontSize: 17 },
   searchInput: { flex: 1, color: "#fff", fontSize: 14, paddingHorizontal: 9 },
   filterArea: {
     flexDirection: "row",
@@ -922,18 +924,18 @@ const s = StyleSheet.create({
     marginTop: 1,
   },
   collapseRight: { flexDirection: "row", alignItems: "center", gap: 9 },
-  chevron: { color: LIME, fontSize: 19, fontWeight: "900" },
+  chevron: { color: DEFAULT_ACCENT, fontSize: 19, fontWeight: "900" },
   selectionCount: {
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     alignItems: "center",
     justifyContent: "center",
   },
   selectionCountText: { color: "#0B0F0D", fontSize: 10, fontWeight: "900" },
   doneButton: {
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     borderRadius: 7,
     paddingHorizontal: 13,
     paddingVertical: 7,
@@ -960,14 +962,12 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 18,
   },
-  chipOn: { backgroundColor: "rgba(168,200,74,.12)", borderColor: "#628A2E" },
   chipText: {
     color: "#8E999F",
     fontSize: 11,
     fontWeight: "700",
     textTransform: "capitalize",
   },
-  chipTextOn: { color: LIME, fontWeight: "900" },
   eventPriceRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -986,7 +986,7 @@ const s = StyleSheet.create({
     borderRadius: 9,
     paddingHorizontal: 9,
   },
-  currency: { color: LIME, fontSize: 12, fontWeight: "900" },
+  currency: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   priceInput: { flex: 1, color: "#fff", fontSize: 12, paddingHorizontal: 5 },
   priceTo: { color: "#667279", fontSize: 8, fontWeight: "900" },
   results: {
@@ -1017,7 +1017,7 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(3,5,6,.61)",
   },
   featureBody: { padding: 29, maxWidth: 730 },
-  meta: { color: LIME, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  meta: { color: DEFAULT_ACCENT, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
   featureTitle: {
     color: "#fff",
     fontSize: 32,
@@ -1034,7 +1034,7 @@ const s = StyleSheet.create({
   },
   actions: { flexDirection: "row", gap: 9, marginTop: 20 },
   primary: {
-    backgroundColor: LIME,
+    backgroundColor: DEFAULT_ACCENT,
     paddingHorizontal: 17,
     paddingVertical: 12,
     borderRadius: 10,
@@ -1081,7 +1081,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rowIconText: { color: LIME, fontWeight: "900", fontSize: 11 },
+  rowIconText: { color: DEFAULT_ACCENT, fontWeight: "900", fontSize: 11 },
   rowBody: { flex: 1 },
   nameRow: {
     flexDirection: "row",
@@ -1090,14 +1090,14 @@ const s = StyleSheet.create({
     flexWrap: "wrap",
   },
   rowTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  verified: { color: LIME, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  verified: { color: DEFAULT_ACCENT, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
   recruiting: {
     color: "#FF9653",
     fontSize: 8,
     fontWeight: "900",
     letterSpacing: 1,
   },
-  arrow: { color: LIME, fontSize: 20 },
+  arrow: { color: DEFAULT_ACCENT, fontSize: 20 },
   detailTags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 9 },
   detailTag: {
     fontSize: 7,
@@ -1111,7 +1111,7 @@ const s = StyleSheet.create({
     borderRadius: 4,
   },
   empty: { alignItems: "center", paddingVertical: 65, gap: 9 },
-  emptyIcon: { color: LIME, fontSize: 30 },
+  emptyIcon: { color: DEFAULT_ACCENT, fontSize: 30 },
   emptyTitle: { color: "#fff", fontSize: 20, fontWeight: "900" },
   emptyBody: { color: "#7E8A91", marginBottom: 10 },
 });

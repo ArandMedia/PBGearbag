@@ -19,9 +19,9 @@ import {
   WidgetDefinition,
   widgetsService,
 } from "../services/widgets.service";
+import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 
-const TURF = "#A8C84A",
-  INK = "#0A0E0F",
+const INK = "#0A0E0F",
   PANEL = "#121819",
   ORANGE = "#E8743B";
 
@@ -31,6 +31,7 @@ function relevantTags(playStyle?: string[]): string[] {
 
 export default function CustomizeWidgetsScreen() {
   const { user } = useAuth();
+  const { accent: TURF } = useTheme();
   const [catalog, setCatalog] = useState<WidgetDefinition[]>([]);
   const [mine, setMine] = useState<ProfileWidget[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +143,7 @@ export default function CustomizeWidgetsScreen() {
 
   return (
     <ScrollView style={s.page} contentContainerStyle={s.content}>
-      <Text style={s.eyebrow}>PROFILE WIDGETS</Text>
+      <Text style={[s.eyebrow, { color: TURF }]}>PROFILE WIDGETS</Text>
       <Text style={s.heading}>Customize your profile</Text>
       <Text style={s.subhead}>
         Attach widgets that fit how you play. Reorder, hide, or remove them
@@ -272,6 +273,7 @@ function CatalogRow({
   isPro: boolean;
   onAdd: () => void;
 }) {
+  const { accent: TURF } = useTheme();
   return (
     <View style={s.catalogRow}>
       <View style={{ flex: 1 }}>
@@ -279,7 +281,7 @@ function CatalogRow({
         <Text style={s.rowDesc}>{def.description}</Text>
       </View>
       <Pressable
-        style={[s.addBtn, !isPro && s.addBtnLocked]}
+        style={[s.addBtn, { backgroundColor: TURF }, !isPro && s.addBtnLocked]}
         onPress={onAdd}
         disabled={busy}
       >
@@ -309,6 +311,7 @@ function WidgetConfigEditor({
   onSave: (config: Record<string, any>) => void;
   onCancel: () => void;
 }) {
+  const { accent: TURF } = useTheme();
   const [values, setValues] = useState<Record<string, any>>(() => ({ ...initial }));
   const listField = def.configFields.find((f) => f.type === "list");
   const [items, setItems] = useState<{ primary: string; secondary: string }[]>(
@@ -368,7 +371,7 @@ function WidgetConfigEditor({
             style={s.addRowBtn}
             onPress={() => setItems((prev) => [...prev, { primary: "", secondary: "" }])}
           >
-            <Text style={s.addRowText}>＋ Add row</Text>
+            <Text style={[s.addRowText, { color: TURF }]}>＋ Add row</Text>
           </Pressable>
         </View>
       )}
@@ -388,7 +391,7 @@ const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: INK },
   center: { flex: 1, backgroundColor: INK, alignItems: "center", justifyContent: "center" },
   content: { maxWidth: 780, width: "100%", alignSelf: "center", padding: 20, paddingBottom: 90 },
-  eyebrow: { color: TURF, fontSize: 9, fontWeight: "900", letterSpacing: 1.4, marginTop: 6 },
+  eyebrow: { color: DEFAULT_ACCENT, fontSize: 9, fontWeight: "900", letterSpacing: 1.4, marginTop: 6 },
   heading: { color: "#F3F1E8", fontSize: 26, fontWeight: "900", marginTop: 8 },
   subhead: { color: "#9DA9A3", fontSize: 13, marginTop: 8, lineHeight: 19, maxWidth: 560 },
   sectionTitle: {
@@ -433,7 +436,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   addBtn: {
-    backgroundColor: TURF,
+    backgroundColor: DEFAULT_ACCENT,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -493,7 +496,7 @@ const s = StyleSheet.create({
   pairRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   pairInput: { flex: 1 },
   addRowBtn: { marginTop: 2, marginBottom: 4 },
-  addRowText: { color: TURF, fontSize: 11, fontWeight: "800" },
+  addRowText: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "800" },
   editorActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
