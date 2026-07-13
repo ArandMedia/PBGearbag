@@ -292,7 +292,6 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={s.coverShade} />
         <View style={s.coverMeta}>
           <Text style={[s.coverKicker, { color: TURF }]}>PLAYER PROFILE</Text>
-          <Text style={s.coverHandle}>@{user.username}</Text>
         </View>
       </View>
       <View style={[s.identity, compact && s.identityCompact]}>
@@ -324,6 +323,7 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
             )}
           </View>
+          <Text style={s.handle}>@{user.username}</Text>
           <View style={s.metaLine}>
             {location && <Text style={s.identityMeta}>⌖ {location}</Text>}
             <Text style={s.identityMeta}>
@@ -834,12 +834,6 @@ const s = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1.6,
   },
-  coverHandle: {
-    color: "#AAB3AF",
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 4,
-  },
   identity: {
     marginHorizontal: 26,
     marginTop: -44,
@@ -934,6 +928,7 @@ const s = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.7,
   },
+  handle: { color: "#8B968F", fontSize: 12, fontWeight: "700", marginTop: 3 },
   metaLine: { flexDirection: "row", gap: 14, flexWrap: "wrap", marginTop: 4 },
   identityMeta: {
     color: "#727E7A",
