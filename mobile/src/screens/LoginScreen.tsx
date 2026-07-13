@@ -54,7 +54,7 @@ export default function LoginScreen({ navigation }: any) {
           <Text style={styles.promise}>Free to join. No pressure. Just more ways to play.</Text>
         </View>
         <View style={styles.form}>
-          <View style={styles.brandRow}><PBGLogo size={38} /><Text style={styles.brandName}>PBGearbag</Text></View>
+          <View style={styles.brandRow}><PBGLogo size={38} /><Text style={styles.brandName}>Gearbag</Text></View>
           <Text style={styles.kicker}>THE PAINTBALL NETWORK</Text>
           <Text style={styles.title}>Get back in the game.</Text>
           <Text style={styles.subtitle}>Your gear, your people, and your next field day are waiting.</Text>
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   benefitTitle:{color:'#fff',fontSize:16,fontWeight:'900'},
   benefitCopy:{color:'#96a1a8',fontSize:14,lineHeight:20,marginTop:3,maxWidth:360},
   promise:{color:'#A8C84A',fontSize:13,fontWeight:'800',marginTop:10},
-  brandRow:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:28},brandName:{color:'#fff',fontSize:20,fontWeight:'900'},kicker:{color:'#A8C84A',fontSize:10,fontWeight:'900',letterSpacing:1.7,marginBottom:11},
+  brandRow:{flexDirection:'row',alignItems:'center',gap:5,marginBottom:28},brandName:{color:'#fff',fontSize:22,fontWeight:'900',letterSpacing:-0.3},kicker:{color:'#A8C84A',fontSize:10,fontWeight:'900',letterSpacing:1.7,marginBottom:11},
   title: {
     fontSize: 42,
     fontWeight: '900',

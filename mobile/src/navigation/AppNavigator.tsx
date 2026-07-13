@@ -74,7 +74,7 @@ function Brand({ color = DEFAULT_ACCENT }: { color?: string }) {
     <View style={styles.brand}>
       <PBGLogo size={38} color={color} />
       <View>
-        <Text style={styles.brandName}>GEARBAG</Text>
+        <Text style={styles.brandName}>Gearbag</Text>
         <Text style={styles.brandTag}>THE PAINTBALL NETWORK</Text>
       </View>
     </View>
@@ -411,12 +411,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#232B30",
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 11 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 5 },
   brandName: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
-    letterSpacing: 1.7,
+    letterSpacing: -0.3,
   },
   brandTag: {
     color: "#727D84",
