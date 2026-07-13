@@ -144,7 +144,8 @@ export default function PublicProfileScreen({ route, navigation }: any) {
         <Text style={s.muted}>Player not found.</Text>
       </View>
     );
-  const name = user.displayName || user.username;
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  const name = user.displayName || fullName || user.username;
   const location = [user.city, user.stateProvince, user.country]
     .filter(Boolean)
     .join(", ");

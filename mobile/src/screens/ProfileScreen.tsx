@@ -194,7 +194,8 @@ export default function ProfileScreen({ navigation }: any) {
       setBillingBusy(null);
     }
   };
-  const displayName = user?.displayName || user?.username || "Player";
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const displayName = user?.displayName || fullName || user?.username || "Player";
   const location = [user?.city, user?.stateProvince, user?.country]
     .filter(Boolean)
     .join(", ");
