@@ -45,6 +45,7 @@ export const communityService={
   async organizationsPaginated(params:{type?:string;page:number;limit?:number}){return (await apiClient.get<Paginated<Organization>>('/organizations',{params})).data},
   async organizationsInBounds(bbox:{west:number;south:number;east:number;north:number},type?:string){return (await apiClient.get<Organization[]>('/organizations',{params:{type,bbox:`${bbox.west},${bbox.south},${bbox.east},${bbox.north}`}})).data},
   async organization(slug:string){return (await apiClient.get<Organization>(`/organizations/${slug}`)).data},
+  async updateOrganization(id:string,data:{name?:string;description?:string;address?:string;city?:string;region?:string;country?:string;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;images?:string[];amenities?:string[];hours?:string}){return (await apiClient.patch<Organization>(`/organizations/${id}`,data)).data},
   async organizationEvents(id:string){return (await apiClient.get<Event[]>(`/organizations/${id}/events`)).data},
   async requestOrganizationClaim(id:string,note?:string){return (await apiClient.post<OrganizationClaim>(`/organizations/${id}/claim`,{note})).data},
   async organizationClaims(){return (await apiClient.get<OrganizationClaim[]>('/organizations/claims')).data},

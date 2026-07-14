@@ -508,6 +508,11 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
           {data.followerCount} follower{data.followerCount === 1 ? "" : "s"}
         </Text>
       )}
+      {kind === "field" && data.claimedById === user?.id && (
+        <Pressable style={s.manageLink} onPress={() => navigation.navigate("EditField", { slug })}>
+          <Text style={[s.manageLinkText, { color: accent }]}>Manage listing →</Text>
+        </Pressable>
+      )}
       <Text style={s.place}>{location}</Text>
       <Text style={s.body}>{data.description}</Text>
       {kind === "event" && (
@@ -1164,6 +1169,8 @@ const s = StyleSheet.create({
   followBtnText: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   followBtnTextActive: { color: "#10140D" },
   followerCount: { color: "#75817B", fontSize: 12, marginTop: 6 },
+  manageLink: { marginTop: 8 },
+  manageLinkText: { fontSize: 12, fontWeight: "900" },
   announceHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   announceToggle: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   announceForm: { marginTop: 10, marginBottom: 16, gap: 10 },

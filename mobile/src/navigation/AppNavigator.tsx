@@ -53,6 +53,7 @@ import CommunityEntityScreen from "../screens/CommunityEntityScreen";
 import TeamGearOrderScreen from "../screens/TeamGearOrderScreen";
 import NotFoundScreen from "../screens/NotFoundScreen";
 import CreateEventScreen from "../screens/CreateEventScreen";
+import EditFieldScreen from "../screens/EditFieldScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
@@ -343,6 +344,11 @@ function MainStack() {
         name="CreateEvent"
         component={CreateEventScreen}
         options={detailOptions("Host an Event")}
+      />
+      <Stack.Screen
+        name="EditField"
+        component={EditFieldScreen}
+        options={detailOptions("Manage Listing")}
       />
     </Stack.Navigator>
   );

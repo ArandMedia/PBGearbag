@@ -105,6 +105,22 @@ export class CommunityService {
     return org;
   }
   organizationEvents(organizationId:string){return this.events.find({where:{organizationId,status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:20})}
+  // A claimed listing's owner can correct/enrich their own details — the
+  // claim approval already was the staff review (same reasoning as
+  // vetted-partner tournaments/events), so this applies immediately with
+  // no second moderation pass. type/slug/claimedById stay fixed here:
+  // slug is the URL identity (changing it breaks existing links/bookmarks)
+  // and type changes would let a claimed owner recategorize their listing
+  // without review.
+  async updateOrganization(userId:string,id:string,data:{name?:string;description?:string;address?:string;city?:string;region?:string;country?:string;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;images?:string[];amenities?:string[];hours?:string}){
+    const org=await this.organizations.findOneBy({id});
+    if(!org)throw new NotFoundException('Organization not found');
+    if(org.claimedById!==userId)throw new ForbiddenException('Only this listing\'s claimed owner can edit it');
+    const {amenities,hours,...fields}=data;
+    Object.assign(org,fields);
+    org.details={...org.details,...(amenities?{amenities}:{}),...(hours!==undefined?{hours}:{})};
+    return this.organizations.save(org);
+  }
   async importOsmFields(bbox:string){
     try{return await runOsmImport(this.organizations,bbox)}
     catch(error:any){throw new BadGatewayException(`OSM import failed: ${error?.message||error}`)}
