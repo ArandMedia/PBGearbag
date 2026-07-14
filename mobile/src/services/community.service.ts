@@ -23,6 +23,9 @@ export type Report={id:string;reporterId:string;subjectId:string;subjectType:str
 
 export const communityService={
   async gearbags(){return (await apiClient.get<Gearbag[]>('/gearbags/me')).data},
+  async createGearbag(data:{name:string;description?:string;visibility?:string}){return (await apiClient.post<Gearbag>('/gearbags',data)).data},
+  async updateGearbag(id:string,data:Partial<{name:string;description?:string;visibility:string}>){return (await apiClient.patch<Gearbag>(`/gearbags/${id}`,data)).data},
+  async removeGearbag(id:string){return (await apiClient.delete(`/gearbags/${id}`)).data},
   async addGearItem(gearbagId:string,data:Partial<GearItem>){return (await apiClient.post(`/gearbags/${gearbagId}/items`,data)).data},
   async updateGearItem(id:string,data:Partial<GearItem>){return (await apiClient.patch(`/gearbags/items/${id}`,data)).data},
   async archiveGearItem(id:string){return (await apiClient.post(`/gearbags/items/${id}/archive`)).data},

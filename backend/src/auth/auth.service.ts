@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Session } from './entities/session.entity';
 import { AuthToken, AuthTokenType } from './entities/auth-token.entity';
+import { Gearbag } from '../community/entities/community.entity';
 import * as nodemailer from 'nodemailer';
 
 export interface SessionContext { deviceName?: string; userAgent?: string; ipAddress?: string }
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     @InjectRepository(Session) private readonly sessions: Repository<Session>,
     @InjectRepository(AuthToken) private readonly authTokens:Repository<AuthToken>,
+    @InjectRepository(Gearbag) private readonly gearbags:Repository<Gearbag>,
   ) {}
 
   async register(dto: RegisterDto, context: SessionContext = {}): Promise<AuthResponse> {
@@ -36,6 +38,7 @@ export class AuthService {
     const normalizedEmail = dto.email.toLowerCase();
     const superAdminEmail = (this.configService.get('SUPER_ADMIN_EMAIL') || 'andrew@arandmedia.com').toLowerCase();
     const user = await this.usersService.create({ email:dto.email,username:dto.username,firstName:dto.firstName,lastName:dto.lastName,password:await bcrypt.hash(dto.password, 12),ageConfirmed:dto.ageConfirmed,termsAcceptedAt:new Date(),roles: normalizedEmail === superAdminEmail ? [UserRole.USER, UserRole.ADMIN] : [UserRole.USER] });
+    await this.gearbags.save(this.gearbags.create({ ownerId:user.id, name:'My Gearbag', isPrimary:true }));
     const response=await this.startSession(user, context);const token=await this.issueToken(user,AuthTokenType.VERIFY,24*60);
     await this.deliverToken(user.email,token,AuthTokenType.VERIFY);
     if(this.configService.get('NODE_ENV')!=='production')response.verificationToken=token;

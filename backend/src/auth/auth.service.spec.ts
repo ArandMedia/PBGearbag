@@ -66,8 +66,13 @@ function makeService(overrides: Partial<any> = {}) {
     findOne: jest.fn(),
     ...overrides.authTokens,
   };
-  const service = new AuthService(usersService as any, jwtService as any, configService as any, sessions as any, authTokens as any);
-  return { service, usersService, jwtService, configService, sessions, authTokens };
+  const gearbags = {
+    create: jest.fn((x: any) => x),
+    save: jest.fn((x: any) => Promise.resolve({ id: 'gearbag-1', ...x })),
+    ...overrides.gearbags,
+  };
+  const service = new AuthService(usersService as any, jwtService as any, configService as any, sessions as any, authTokens as any, gearbags as any);
+  return { service, usersService, jwtService, configService, sessions, authTokens, gearbags };
 }
 
 describe('AuthService', () => {

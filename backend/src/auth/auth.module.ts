@@ -13,11 +13,12 @@ import { Session } from './entities/session.entity';
 import { RolesGuard } from './guards/roles.guard';
 import { AuthToken } from './entities/auth-token.entity';
 import { VerifiedGuard } from './guards/verified.guard';
+import { Gearbag } from '../community/entities/community.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([Session, AuthToken]),
+    TypeOrmModule.forFeature([Session, AuthToken, Gearbag]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
