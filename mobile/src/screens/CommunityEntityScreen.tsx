@@ -107,6 +107,9 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
   const [goItems, setGoItems] = useState([{ name: "", price: "", sizes: "" }]);
   const [creatingGearOrder, setCreatingGearOrder] = useState(false);
   const [eventAttendees, setEventAttendees] = useState<{ userId: string; userName: string; status: string; createdAt: string }[] | null>(null);
+  const [teamRoster, setTeamRoster] = useState<{ userId: string; userName: string; role: string; joinedAt: string }[]>([]);
+  const [teamApplications, setTeamApplications] = useState<{ id: string; userId: string; userName: string; message?: string; status: string; createdAt: string }[]>([]);
+  const [decidingApplicationId, setDecidingApplicationId] = useState<string | null>(null);
   const [registeringTournament, setRegisteringTournament] = useState(false);
   const [startingTournament, setStartingTournament] = useState(false);
   const [reportingMatchId, setReportingMatchId] = useState<string | null>(null);
@@ -141,6 +144,7 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
       communityService.organizationEvents(data.id).then(setFieldEvents).catch(() => {});
     }
     if (kind === "team") {
+      communityService.teamRoster(data.id).then(setTeamRoster).catch(() => {});
       communityService
         .teamMembership(data.id)
         .then((m) => {
@@ -160,6 +164,9 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
                 setGearOrdersOwnerIsPro(ownerIsPro);
               })
               .catch(() => {});
+            if (["owner", "manager", "captain"].includes(m.role)) {
+              communityService.teamApplications(data.id).then(setTeamApplications).catch(() => {});
+            }
           }
         })
         .catch(() => {});
@@ -250,6 +257,18 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
     }
   };
   const canManageTeam = kind === "team" && ["owner", "manager", "captain"].includes(teamRole || "");
+  const decideApplication = async (id: string, status: "approved" | "declined") => {
+    setDecidingApplicationId(id);
+    try {
+      await communityService.decideTeamApplication(id, status);
+      setTeamApplications((prev) => prev.filter((a) => a.id !== id));
+      if (status === "approved") communityService.teamRoster(data.id).then(setTeamRoster).catch(() => {});
+    } catch {
+      Alert.alert("Couldn't update this application", "Please try again in a moment.");
+    } finally {
+      setDecidingApplicationId(null);
+    }
+  };
   const upgradeTeamPro = async () => {
     try {
       const url = await billingService.startCheckout("monthly");
@@ -847,6 +866,48 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
                   })}
                 </View>
               ))}
+        </View>
+      )}
+
+      {kind === "team" && (
+        <View style={s.card}>
+          <Text style={s.label}>ROSTER · {teamRoster.length}</Text>
+          {!teamRoster.length ? (
+            <Text style={s.emptyAnnounce}>No members yet.</Text>
+          ) : (
+            teamRoster.map((m) => (
+              <View key={m.userId} style={s.eventRow}>
+                <Text style={s.eventTitle} numberOfLines={1}>{m.userName}</Text>
+                <Text style={[s.eventDate, { color: accent }]}>{m.role.toUpperCase()}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
+      {canManageTeam && teamApplications.length > 0 && (
+        <View style={s.card}>
+          <Text style={s.label}>PENDING APPLICATIONS · {teamApplications.length}</Text>
+          {teamApplications.map((a) => (
+            <View key={a.id} style={s.eventRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.eventTitle} numberOfLines={1}>{a.userName}</Text>
+                {!!a.message && <Text style={[s.body, { fontSize: 12, marginTop: 2 }]} numberOfLines={2}>{a.message}</Text>}
+              </View>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable
+                  style={[s.rsvpBtn, { backgroundColor: accent, borderColor: accent }]}
+                  onPress={() => decideApplication(a.id, "approved")}
+                  disabled={decidingApplicationId === a.id}
+                >
+                  {decidingApplicationId === a.id ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={[s.rsvpBtnText, s.rsvpBtnTextActive]}>APPROVE</Text>}
+                </Pressable>
+                <Pressable style={s.rsvpBtn} onPress={() => decideApplication(a.id, "declined")} disabled={decidingApplicationId === a.id}>
+                  <Text style={s.rsvpBtnText}>DECLINE</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
         </View>
       )}
 

@@ -55,7 +55,24 @@ export class CommunityService {
     return team;
   }
   async applyTeam(userId:string,teamId:string,message?:string){if(await this.teamMembers.exist({where:{teamId,userId,isActive:true}}))throw new BadRequestException('Already a team member');const existing=await this.applications.findOne({where:{teamId,userId,status:ApplicationStatus.PENDING}});return existing||this.applications.save(this.applications.create({teamId,userId,message,status:ApplicationStatus.PENDING}))}
-  async teamApplications(userId:string,teamId:string){await this.requireTeamManager(userId,teamId);return this.applications.find({where:{teamId},order:{createdAt:'DESC'}})}
+  async teamApplications(userId:string,teamId:string){
+    await this.requireTeamManager(userId,teamId);
+    const apps=await this.applications.find({where:{teamId,status:ApplicationStatus.PENDING},order:{createdAt:'ASC'}});
+    if(!apps.length)return [];
+    const applicants=await this.users.find({where:{id:In(apps.map(a=>a.userId))}});
+    return apps.map(a=>({...a,userName:applicants.find(u=>u.id===a.userId)?.displayName||applicants.find(u=>u.id===a.userId)?.username||'Someone'}));
+  }
+  // Public — a team's roster is visible to anyone viewing the team page,
+  // same visibility level as the team itself.
+  async teamRoster(teamId:string){
+    const members=await this.teamMembers.find({where:{teamId,isActive:true},order:{joinedAt:'ASC'}});
+    if(!members.length)return [];
+    const users=await this.users.find({where:{id:In(members.map(m=>m.userId))}});
+    return members.map(m=>{
+      const u=users.find(x=>x.id===m.userId);
+      return {userId:m.userId,userName:u?.displayName||u?.username||'Someone',role:m.role,joinedAt:m.joinedAt};
+    });
+  }
   async teamMembership(userId:string,teamId:string){return this.teamMembers.findOne({where:{teamId,userId,isActive:true}})}
   async myTeam(userId:string){const membership=await this.teamMembers.findOne({where:{userId,isActive:true},order:{joinedAt:'ASC'}});if(!membership)return null;const team=await this.teams.findOneBy({id:membership.teamId});return team?{...team,role:membership.role}:null}
   async decideApplication(userId:string,id:string,status:ApplicationStatus){const app=await this.applications.findOneBy({id});if(!app)throw new NotFoundException('Application not found');await this.requireTeamManager(userId,app.teamId);app.status=status;await this.applications.save(app);if(status===ApplicationStatus.APPROVED&&!await this.teamMembers.exist({where:{teamId:app.teamId,userId:app.userId}}))await this.teamMembers.save({teamId:app.teamId,userId:app.userId,role:TeamMemberRole.PLAYER,isActive:true});return app}

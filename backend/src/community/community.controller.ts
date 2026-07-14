@@ -57,6 +57,7 @@ export class TeamsController { constructor(private s:CommunityService){}
   @Get(':id/applications/manage') applications(@CurrentUser()u:User,@Param('id')id:string){return this.s.teamApplications(u.id,id)}
   @Patch('applications/:id') decide(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ApplicationDecisionDto){return this.s.decideApplication(u.id,id,d.status)}
   @Get(':id/membership') async membership(@CurrentUser()u:User,@Param('id')id:string){const m=await this.s.teamMembership(u.id,id);return {role:m?.role||null}}
+  @Get(':id/roster') @Public() roster(@Param('id')id:string){return this.s.teamRoster(id)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('team',id)}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'team',id,d)}
   @Get(':id/practices') practices(@CurrentUser()u:User,@Param('id')id:string){return this.s.listTeamPractices(u.id,id)}
