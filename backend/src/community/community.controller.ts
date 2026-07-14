@@ -15,6 +15,9 @@ class ApplicationDecisionDto { @IsEnum(ApplicationStatus) status:ApplicationStat
 class OrganizationDto { @IsString() @IsNotEmpty() name:string; @IsEnum(OrganizationType) type:OrganizationType; @IsOptional() @IsString() description?:string; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string; @IsOptional() @IsString() country?:string; @IsOptional() @IsString() address?:string; @IsOptional() @IsString() websiteUrl?:string; @IsOptional() @IsObject() details?:Record<string,unknown> }
 class EventDto { @IsString() @IsNotEmpty() title:string; @IsString() eventType:string; @IsString() description:string; @IsDateString() startsAt:any; @IsDateString() endsAt:any; @IsString() timezone:string; @IsOptional() @IsEnum(EventStatus) status?:EventStatus; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string; @IsOptional() @IsString() country?:string; @IsOptional() @IsString() registrationUrl?:string; @IsOptional() @IsInt() @Min(0) costCents?:number; @IsOptional() @IsInt() @Min(1) capacity?:number; @IsOptional() @IsString() bannerUrl?:string }
 class TeamPracticeDto { @IsString() @IsNotEmpty() title:string; @IsOptional() @IsString() description?:string; @IsDateString() startsAt:any; @IsDateString() endsAt:any; @IsString() timezone:string; @IsOptional() @IsString() city?:string; @IsOptional() @IsString() region?:string }
+class GearOrderItemDto { @IsString() @IsNotEmpty() name:string; @IsOptional() @IsNumber() @Min(0) priceCents?:number; @IsOptional() @IsArray() @IsString({each:true}) variantOptions?:string[] }
+class TeamGearOrderDto { @IsString() @IsNotEmpty() title:string; @IsOptional() @IsString() description?:string; @IsOptional() @IsDateString() closesAt?:any; @IsArray() items:GearOrderItemDto[] }
+class GearOrderPickDto { @IsOptional() @IsString() variant?:string; @IsOptional() @IsInt() @Min(1) @Max(20) quantity?:number }
 class RsvpDto { @IsEnum(RsvpStatus) status:RsvpStatus; @IsOptional() @IsEnum(Visibility) visibility?:Visibility }
 class ConversationDto { @IsEnum(ConversationType) type:ConversationType; @IsArray() @IsString({each:true}) participantIds:string[]; @IsOptional() @IsString() subject?:string; @IsOptional() @IsString() contextId?:string }
 class MessageDto { @IsString() @IsNotEmpty() body:string; @IsOptional() @IsArray() @IsString({each:true}) attachments?:string[] }
@@ -57,6 +60,17 @@ export class TeamsController { constructor(private s:CommunityService){}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'team',id,d)}
   @Get(':id/practices') practices(@CurrentUser()u:User,@Param('id')id:string){return this.s.listTeamPractices(u.id,id)}
   @Post(':id/practices') schedulePractice(@CurrentUser()u:User,@Param('id')id:string,@Body()d:TeamPracticeDto){return this.s.createTeamPractice(u.id,id,d)}
+  @Get(':id/gear-orders') gearOrders(@CurrentUser()u:User,@Param('id')id:string){return this.s.listTeamGearOrders(u.id,id)}
+  @Post(':id/gear-orders') createGearOrder(@CurrentUser()u:User,@Param('id')id:string,@Body()d:TeamGearOrderDto){return this.s.createGearOrder(u.id,id,d)}
+}
+
+@Controller('gear-orders')
+export class GearOrdersController { constructor(private s:CommunityService){}
+  @Get(':id') one(@CurrentUser()u:User,@Param('id')id:string){return this.s.getGearOrder(u.id,id)}
+  @Post(':id/close') close(@CurrentUser()u:User,@Param('id')id:string){return this.s.closeGearOrder(u.id,id)}
+  @Post(':id/items') addItem(@CurrentUser()u:User,@Param('id')id:string,@Body()d:GearOrderItemDto){return this.s.addGearOrderItem(u.id,id,d)}
+  @Post('items/:itemId/picks') pick(@CurrentUser()u:User,@Param('itemId')itemId:string,@Body()d:GearOrderPickDto){return this.s.pickGearOrderItem(u.id,itemId,d)}
+  @Delete('items/:itemId/picks') unpick(@CurrentUser()u:User,@Param('itemId')itemId:string){return this.s.unpickGearOrderItem(u.id,itemId)}
 }
 
 @Controller('organizations')

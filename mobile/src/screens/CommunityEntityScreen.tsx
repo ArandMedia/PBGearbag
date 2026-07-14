@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { Alert } from "../utils/alert";
-import { Announcement, communityService, Event, Team, Tournament, TournamentEntry, TournamentMatch } from "../services/community.service";
+import { Announcement, communityService, Event, Team, TeamGearOrder, Tournament, TournamentEntry, TournamentMatch } from "../services/community.service";
 import { billingService } from "../services/billing.service";
 import { useAuth } from "../store/AuthContext";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
@@ -66,7 +66,7 @@ const SOURCE_TYPE: Record<string, "organization" | "event" | "team"> = {
   team: "team",
 };
 
-export default function CommunityEntityScreen({ route }: any) {
+export default function CommunityEntityScreen({ route, navigation }: any) {
   const { kind, slug } = route.params || {};
   const { user } = useAuth();
   const { accent } = useTheme();
@@ -98,6 +98,14 @@ export default function CommunityEntityScreen({ route }: any) {
   const [practiceRsvpBusy, setPracticeRsvpBusy] = useState<string | null>(null);
   const [tournamentData, setTournamentData] = useState<{ tournament: Tournament; entries: TournamentEntry[]; matches: TournamentMatch[] } | null>(null);
   const [myManagedTeam, setMyManagedTeam] = useState<(Team & { role: string }) | null>(null);
+  const [gearOrders, setGearOrders] = useState<TeamGearOrder[]>([]);
+  const [gearOrdersOwnerIsPro, setGearOrdersOwnerIsPro] = useState(false);
+  const [showGearOrderForm, setShowGearOrderForm] = useState(false);
+  const [goTitle, setGoTitle] = useState("");
+  const [goDescription, setGoDescription] = useState("");
+  const [goClosesAt, setGoClosesAt] = useState("");
+  const [goItems, setGoItems] = useState([{ name: "", price: "", sizes: "" }]);
+  const [creatingGearOrder, setCreatingGearOrder] = useState(false);
   const [registeringTournament, setRegisteringTournament] = useState(false);
   const [startingTournament, setStartingTournament] = useState(false);
   const [reportingMatchId, setReportingMatchId] = useState<string | null>(null);
@@ -142,6 +150,13 @@ export default function CommunityEntityScreen({ route }: any) {
               .then(({ items, ownerIsPro }) => {
                 setPractices(items);
                 setPracticesOwnerIsPro(ownerIsPro);
+              })
+              .catch(() => {});
+            communityService
+              .teamGearOrders(data.id)
+              .then(({ items, ownerIsPro }) => {
+                setGearOrders(items);
+                setGearOrdersOwnerIsPro(ownerIsPro);
               })
               .catch(() => {});
           }
@@ -258,6 +273,70 @@ export default function CommunityEntityScreen({ route }: any) {
   const openScheduleForm = () => {
     if (!requireProToSchedule()) return;
     setShowScheduleForm(true);
+  };
+  const requireProToCreateGearOrder = (): boolean => {
+    if (gearOrdersOwnerIsPro) return true;
+    if (teamRole === "owner") {
+      Alert.alert(
+        "Team gear orders are a Pro feature",
+        "Running gear orders for your team requires PBG Pro — $4/mo or $24/yr.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Upgrade", onPress: upgradeTeamPro },
+        ],
+      );
+    } else {
+      Alert.alert(
+        "Team gear orders are a Pro feature",
+        "This team's owner needs an active PBG Pro subscription to unlock gear orders. Ask them to upgrade.",
+      );
+    }
+    return false;
+  };
+  const openGearOrderForm = () => {
+    if (!requireProToCreateGearOrder()) return;
+    setShowGearOrderForm(true);
+  };
+  const submitGearOrder = async () => {
+    const items = goItems
+      .map((i) => ({
+        name: i.name.trim(),
+        priceCents: i.price.trim() ? Math.round(Number(i.price) * 100) : undefined,
+        variantOptions: i.sizes.trim() ? i.sizes.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
+      }))
+      .filter((i) => i.name);
+    if (!goTitle.trim() || !items.length) return;
+    let closesAt: string | undefined;
+    if (goClosesAt.trim()) {
+      const d = new Date(goClosesAt);
+      if (Number.isNaN(d.getTime())) {
+        Alert.alert("Check the date", "Closes-by needs a valid date, e.g. \"Aug 1, 2026\".");
+        return;
+      }
+      closesAt = d.toISOString();
+    }
+    setCreatingGearOrder(true);
+    try {
+      const { order } = await communityService.createTeamGearOrder(data.id, {
+        title: goTitle.trim(),
+        description: goDescription.trim() || undefined,
+        closesAt,
+        items,
+      });
+      setGearOrders((prev) => [{ ...order, itemCount: items.length }, ...prev]);
+      setGoTitle("");
+      setGoDescription("");
+      setGoClosesAt("");
+      setGoItems([{ name: "", price: "", sizes: "" }]);
+      setShowGearOrderForm(false);
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't create gear order",
+        e?.response?.data?.error?.message || e?.response?.data?.message || "Please try again in a moment.",
+      );
+    } finally {
+      setCreatingGearOrder(false);
+    }
   };
   const submitPractice = async () => {
     if (!practiceTitle.trim() || !practiceStart.trim() || !practiceEnd.trim()) return;
@@ -817,6 +896,109 @@ export default function CommunityEntityScreen({ route }: any) {
         </View>
       )}
 
+      {kind === "team" && teamRole && (
+        <View style={s.card}>
+          <View style={s.announceHeader}>
+            <Text style={s.label}>GEAR ORDERS</Text>
+            {canManageTeam && (
+              <Pressable onPress={() => (showGearOrderForm ? setShowGearOrderForm(false) : openGearOrderForm())}>
+                <Text style={[s.announceToggle, { color: accent }]}>{showGearOrderForm ? "Cancel" : "+ New order"}</Text>
+              </Pressable>
+            )}
+          </View>
+          {canManageTeam && showGearOrderForm && (
+            <View style={s.announceForm}>
+              <Text style={s.disclaimer}>
+                Your captain collects payment separately — this isn't a checkout. No money moves through PBGearbag for gear orders.
+              </Text>
+              <TextInput
+                style={s.input}
+                placeholder="Order title (e.g. 2026 Team Jerseys)"
+                placeholderTextColor="#5A655F"
+                value={goTitle}
+                onChangeText={setGoTitle}
+              />
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="Details (optional)"
+                placeholderTextColor="#5A655F"
+                value={goDescription}
+                onChangeText={setGoDescription}
+                multiline
+                numberOfLines={2}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Picks close by — e.g. Aug 1, 2026 (optional)"
+                placeholderTextColor="#5A655F"
+                value={goClosesAt}
+                onChangeText={setGoClosesAt}
+              />
+              <Text style={s.label}>ITEMS</Text>
+              {goItems.map((item, idx) => (
+                <View key={idx} style={s.gearItemRow}>
+                  <TextInput
+                    style={s.input}
+                    placeholder="Item name"
+                    placeholderTextColor="#5A655F"
+                    value={item.name}
+                    onChangeText={(v) => setGoItems((prev) => prev.map((it, i) => (i === idx ? { ...it, name: v } : it)))}
+                  />
+                  <TextInput
+                    style={s.input}
+                    placeholder="Price (optional)"
+                    placeholderTextColor="#5A655F"
+                    value={item.price}
+                    keyboardType="decimal-pad"
+                    onChangeText={(v) => setGoItems((prev) => prev.map((it, i) => (i === idx ? { ...it, price: v } : it)))}
+                  />
+                  <TextInput
+                    style={s.input}
+                    placeholder="Sizes, comma-separated (optional)"
+                    placeholderTextColor="#5A655F"
+                    value={item.sizes}
+                    onChangeText={(v) => setGoItems((prev) => prev.map((it, i) => (i === idx ? { ...it, sizes: v } : it)))}
+                  />
+                  {goItems.length > 1 && (
+                    <Pressable onPress={() => setGoItems((prev) => prev.filter((_, i) => i !== idx))}>
+                      <Text style={{ color: "#75817B", fontSize: 11 }}>Remove item</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ))}
+              <Pressable onPress={() => setGoItems((prev) => [...prev, { name: "", price: "", sizes: "" }])}>
+                <Text style={{ color: accent, fontSize: 12, fontWeight: "900" }}>+ Add item</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  s.postBtn,
+                  { backgroundColor: accent },
+                  (!goTitle.trim() || !goItems.some((i) => i.name.trim()) || creatingGearOrder) && s.postBtnDisabled,
+                ]}
+                onPress={submitGearOrder}
+                disabled={!goTitle.trim() || !goItems.some((i) => i.name.trim()) || creatingGearOrder}
+              >
+                {creatingGearOrder ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.postBtnText}>Create order</Text>}
+              </Pressable>
+            </View>
+          )}
+          {!gearOrders.length ? (
+            <Text style={s.emptyAnnounce}>No gear orders yet.</Text>
+          ) : (
+            gearOrders.map((o) => (
+              <Pressable key={o.id} style={s.eventRow} onPress={() => navigation.navigate("TeamGearOrder", { orderId: o.id })}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.eventTitle} numberOfLines={1}>{o.title}</Text>
+                  <Text style={[s.eventDate, { color: o.status === "open" ? accent : "#75817B" }]}>
+                    {o.status.toUpperCase()} · {o.itemCount} item{o.itemCount === 1 ? "" : "s"}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </View>
+      )}
+
       <View style={s.card}>
         <View style={s.announceHeader}>
           <Text style={s.label}>ANNOUNCEMENTS</Text>
@@ -984,6 +1166,8 @@ const s = StyleSheet.create({
   eventDate: { color: DEFAULT_ACCENT, fontSize: 11, fontWeight: "900" },
   claimBody: { color: "#B8C1BC", fontSize: 13, lineHeight: 19, marginBottom: 14 },
   claimSentText: { color: DEFAULT_ACCENT, fontSize: 13, fontWeight: "800" },
+  disclaimer: { color: "#75817B", fontSize: 11, lineHeight: 16, marginBottom: 4, fontStyle: "italic" },
+  gearItemRow: { gap: 8, marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#29322F" },
   roundLabel: { color: "#75817B", fontSize: 10, fontWeight: "900", letterSpacing: 1, marginBottom: 8 },
   matchRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#29322F" },
   matchTeams: { color: "#F3F1E8", fontSize: 13, fontWeight: "800" },

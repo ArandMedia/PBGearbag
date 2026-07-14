@@ -10,6 +10,10 @@ export type OrganizationClaim={id:string;organizationId:string;userId:string;not
 export type Tournament={id:string;eventId:string;format:string;maxTeams?:number;registrationClosesAt?:string;status:string;createdAt?:string};
 export type TournamentEntry={id:string;tournamentId:string;teamId:string;registeredBy:string;seed?:number;status:string;teamName?:string};
 export type TournamentMatch={id:string;tournamentId:string;round:number;matchNumber:number;teamAEntryId?:string;teamBEntryId?:string;teamAScore?:number;teamBScore?:number;winnerEntryId?:string;nextMatchId?:string;nextMatchSlot?:'a'|'b';status:string};
+export type TeamGearOrder={id:string;teamId:string;createdById:string;title:string;description?:string;closesAt?:string;status:'open'|'closed';createdAt:string;itemCount?:number};
+export type TeamGearOrderItem={id:string;orderId:string;name:string;priceCents?:number;variantOptions?:string[];createdAt?:string};
+export type TeamGearOrderPick={id:string;orderId:string;itemId:string;userId:string;variant?:string;quantity:number;userName?:string;createdAt?:string};
+export type TeamGearOrderDetail={order:TeamGearOrder;items:TeamGearOrderItem[];myPicks:TeamGearOrderPick[];itemTotals:Record<string,{quantity:number;byVariant:Record<string,number>}>;isManager:boolean;tally?:TeamGearOrderPick[]};
 export type Paginated<T>={items:T[];total:number;page:number;totalPages:number};
 export type Conversation={id:string;type:string;subject?:string;lastMessageAt?:string;createdAt:string};
 export type Message={id:string;conversationId:string;senderId:string;body:string;createdAt:string};
@@ -24,6 +28,13 @@ export const communityService={
   async teams(){return (await apiClient.get<Team[]>('/teams')).data}, async applyTeam(id:string,message?:string){return (await apiClient.post(`/teams/${id}/applications`,{message})).data},
   async teamPractices(teamId:string){return (await apiClient.get<{items:Event[];ownerIsPro:boolean}>(`/teams/${teamId}/practices`)).data},
   async createTeamPractice(teamId:string,data:{title:string;description?:string;startsAt:string;endsAt:string;timezone:string;city?:string;region?:string}){return (await apiClient.post<Event>(`/teams/${teamId}/practices`,data)).data},
+  async teamGearOrders(teamId:string){return (await apiClient.get<{items:TeamGearOrder[];ownerIsPro:boolean}>(`/teams/${teamId}/gear-orders`)).data},
+  async createTeamGearOrder(teamId:string,data:{title:string;description?:string;closesAt?:string;items:{name:string;priceCents?:number;variantOptions?:string[]}[]}){return (await apiClient.post<{order:TeamGearOrder;items:TeamGearOrderItem[]}>(`/teams/${teamId}/gear-orders`,data)).data},
+  async gearOrder(id:string){return (await apiClient.get<TeamGearOrderDetail>(`/gear-orders/${id}`)).data},
+  async closeGearOrder(id:string){return (await apiClient.post<TeamGearOrder>(`/gear-orders/${id}/close`)).data},
+  async addGearOrderItem(orderId:string,data:{name:string;priceCents?:number;variantOptions?:string[]}){return (await apiClient.post<TeamGearOrderItem>(`/gear-orders/${orderId}/items`,data)).data},
+  async pickGearOrderItem(itemId:string,data:{variant?:string;quantity?:number}){return (await apiClient.post<TeamGearOrderPick>(`/gear-orders/items/${itemId}/picks`,data)).data},
+  async unpickGearOrderItem(itemId:string){return (await apiClient.delete<{message:string}>(`/gear-orders/items/${itemId}/picks`)).data},
   async pendingTeams(){return (await apiClient.get<Team[]>('/teams/pending')).data},
   async decideTeam(id:string,status:'approved'|'declined'){return (await apiClient.patch<Team>(`/teams/${id}/moderate`,{status})).data},
   async pendingEvents(){return (await apiClient.get<Event[]>('/events/pending')).data},

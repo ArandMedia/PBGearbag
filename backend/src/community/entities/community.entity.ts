@@ -269,3 +269,43 @@ export class TournamentMatch {
   @Column({default:'pending'}) status:TournamentMatchStatus;
   @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
 }
+
+// A team captain/manager's bulk gear order — a catalog of items teammates
+// pick from. Purely coordination: no payment is processed in-app (mirrors
+// ListingOffer — offer/negotiation only, actual money moves off-platform).
+// status is varchar, not a native enum, same reasoning as TournamentStatus.
+export type TeamGearOrderStatus = 'open' | 'closed';
+@Entity('team_gear_orders')
+export class TeamGearOrder {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'team_id'}) teamId:string;
+  @Column({name:'created_by_id'}) createdById:string;
+  @Column() title:string; @Column({type:'text',nullable:true}) description?:string;
+  @Column({name:'closes_at',type:'timestamptz',nullable:true}) closesAt?:Date;
+  @Column({default:'open'}) status:TeamGearOrderStatus;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}
+
+@Entity('team_gear_order_items')
+export class TeamGearOrderItem {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'order_id'}) orderId:string;
+  @Column() name:string;
+  @Column({name:'price_cents',type:'int',nullable:true}) priceCents?:number;
+  @Column({name:'variant_options',type:'simple-array',nullable:true}) variantOptions?:string[];
+  @CreateDateColumn({name:'created_at'}) createdAt:Date;
+}
+
+// One pick per (item, user) — a member choosing a single size/variant +
+// quantity for one catalog item. If someone needs two different sizes of
+// the same item, that's coordinated with the captain outside the app.
+@Entity('team_gear_order_picks') @Index(['itemId','userId'],{unique:true})
+export class TeamGearOrderPick {
+  @PrimaryGeneratedColumn('uuid') id:string;
+  @Index() @Column({name:'order_id'}) orderId:string;
+  @Index() @Column({name:'item_id'}) itemId:string;
+  @Index() @Column({name:'user_id'}) userId:string;
+  @Column({nullable:true}) variant?:string;
+  @Column({default:1}) quantity:number;
+  @CreateDateColumn({name:'created_at'}) createdAt:Date; @UpdateDateColumn({name:'updated_at'}) updatedAt:Date;
+}

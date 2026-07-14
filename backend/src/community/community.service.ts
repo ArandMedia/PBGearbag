@@ -5,7 +5,7 @@ import { Listing, ListingStatus } from '../marketplace/entities/listing.entity';
 import { MessagePermission, User } from '../users/entities/user.entity';
 import { SocialService } from '../social/social.service';
 import { BillingService } from '../billing/billing.service';
-import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Tournament, TournamentEntry, TournamentFormat, TournamentMatch, Visibility } from './entities/community.entity';
+import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamGearOrder, TeamGearOrderItem, TeamGearOrderPick, TeamMember, TeamMemberRole, Tournament, TournamentEntry, TournamentFormat, TournamentMatch, Visibility } from './entities/community.entity';
 import { importOsmFields as runOsmImport } from './osm-import.util';
 import { importDirectoryBatch } from './directory-import.util';
 import { DIRECTORY_ENTRIES } from '../config/directory-import-data';
@@ -23,6 +23,7 @@ export class CommunityService {
     @InjectRepository(Notification) private notifications:Repository<Notification>, @InjectRepository(Report) private reports:Repository<Report>, @InjectRepository(Review) private reviews:Repository<Review>,
     @InjectRepository(Announcement) private announcements:Repository<Announcement>,
     @InjectRepository(Tournament) private tournaments:Repository<Tournament>, @InjectRepository(TournamentEntry) private tournamentEntries:Repository<TournamentEntry>, @InjectRepository(TournamentMatch) private tournamentMatches:Repository<TournamentMatch>,
+    @InjectRepository(TeamGearOrder) private gearOrders:Repository<TeamGearOrder>, @InjectRepository(TeamGearOrderItem) private gearOrderItems:Repository<TeamGearOrderItem>, @InjectRepository(TeamGearOrderPick) private gearOrderPicks:Repository<TeamGearOrderPick>,
     @InjectRepository(User) private users:Repository<User>) {}
 
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
@@ -336,6 +337,123 @@ export class CommunityService {
       this.billing.getStatus(team.ownerId),
     ]);
     return {items,ownerIsPro};
+  }
+
+  // Team gear orders — a captain/manager's bulk catalog; teammates pick
+  // their size/qty, the captain gets a tally to coordinate the real
+  // purchase off-platform (Venmo/cash/vendor order). Pro-gating mirrors
+  // createTeamPractice exactly: the team OWNER needs active Pro to
+  // create/manage an order; any active member can browse and pick for free.
+  async createGearOrder(userId:string,teamId:string,data:{title:string;description?:string;closesAt?:string|Date;items:{name:string;priceCents?:number;variantOptions?:string[]}[]}){
+    await this.requireTeamManager(userId,teamId);
+    const team=await this.teams.findOneBy({id:teamId});
+    if(!team)throw new NotFoundException('Team not found');
+    const {isPro}=await this.billing.getStatus(team.ownerId);
+    if(!isPro)throw new ForbiddenException('Team gear orders require the team owner to have an active Pro subscription');
+    const items=(data.items||[]).map(i=>({...i,name:(i.name||'').trim()})).filter(i=>i.name);
+    if(!items.length)throw new BadRequestException('Add at least one item');
+    const result=await this.db.transaction(async manager=>{
+      const ordersRepo=manager.getRepository(TeamGearOrder),itemsRepo=manager.getRepository(TeamGearOrderItem);
+      const order=await ordersRepo.save(ordersRepo.create({teamId,createdById:userId,title:data.title,description:data.description,closesAt:data.closesAt,status:'open'}));
+      const savedItems=await itemsRepo.save(items.map(i=>itemsRepo.create({orderId:order.id,name:i.name,priceCents:i.priceCents,variantOptions:i.variantOptions?.length?i.variantOptions:undefined})));
+      return {order,items:savedItems};
+    });
+    const audience=(await this.announcementAudience('team',teamId)).filter(uid=>uid!==userId);
+    if(audience.length){
+      const actor=await this.actorName(userId);
+      await this.notifications.save(audience.map(uid=>this.notifications.create({
+        userId:uid,type:'team_gear_order_created',title:`New ${team.name} gear order`,
+        body:`${actor} started "${result.order.title}" — go pick your items.`,
+        data:{teamId,orderId:result.order.id},
+      })));
+    }
+    return result;
+  }
+  async listTeamGearOrders(userId:string,teamId:string){
+    const member=await this.teamMembers.findOne({where:{teamId,userId,isActive:true}});
+    if(!member)throw new ForbiddenException('Team members only');
+    const team=await this.teams.findOneBy({id:teamId});
+    if(!team)throw new NotFoundException('Team not found');
+    const [orders,{isPro:ownerIsPro}]=await Promise.all([
+      this.gearOrders.find({where:{teamId},order:{createdAt:'DESC'}}),
+      this.billing.getStatus(team.ownerId),
+    ]);
+    if(!orders.length)return {items:[],ownerIsPro};
+    const items=await this.gearOrderItems.find({where:{orderId:In(orders.map(o=>o.id))}});
+    return {items:orders.map(o=>({...o,itemCount:items.filter(i=>i.orderId===o.id).length})),ownerIsPro};
+  }
+  async getGearOrder(userId:string,orderId:string){
+    const order=await this.gearOrders.findOneBy({id:orderId});
+    if(!order)throw new NotFoundException('Gear order not found');
+    const member=await this.teamMembers.findOne({where:{teamId:order.teamId,userId,isActive:true}});
+    if(!member)throw new ForbiddenException('Team members only');
+    const isManager=[TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN].includes(member.role);
+    const [items,allPicks,myPicks]=await Promise.all([
+      this.gearOrderItems.find({where:{orderId},order:{createdAt:'ASC'}}),
+      this.gearOrderPicks.find({where:{orderId}}),
+      this.gearOrderPicks.find({where:{orderId,userId}}),
+    ]);
+    const itemTotals:Record<string,{quantity:number;byVariant:Record<string,number>}>={};
+    for(const p of allPicks){
+      const t=itemTotals[p.itemId]||(itemTotals[p.itemId]={quantity:0,byVariant:{}});
+      t.quantity+=p.quantity;
+      const key=p.variant||'—';
+      t.byVariant[key]=(t.byVariant[key]||0)+p.quantity;
+    }
+    let tally:any[]|undefined;
+    if(isManager){
+      const pickers=await this.users.find({where:{id:In([...new Set(allPicks.map(p=>p.userId))])}});
+      tally=allPicks.map(p=>({...p,userName:pickers.find(u=>u.id===p.userId)?.displayName||pickers.find(u=>u.id===p.userId)?.username||'Someone'}));
+    }
+    return {order,items,myPicks,itemTotals,isManager,tally};
+  }
+  async closeGearOrder(userId:string,orderId:string){
+    const order=await this.gearOrders.findOneBy({id:orderId});
+    if(!order)throw new NotFoundException('Gear order not found');
+    await this.requireTeamManager(userId,order.teamId);
+    order.status='closed';
+    return this.gearOrders.save(order);
+  }
+  async addGearOrderItem(userId:string,orderId:string,data:{name:string;priceCents?:number;variantOptions?:string[]}){
+    const order=await this.gearOrders.findOneBy({id:orderId});
+    if(!order)throw new NotFoundException('Gear order not found');
+    await this.requireTeamManager(userId,order.teamId);
+    if(order.status!=='open')throw new ForbiddenException('This order is closed');
+    const name=(data.name||'').trim();
+    if(!name)throw new BadRequestException('Item name is required');
+    return this.gearOrderItems.save(this.gearOrderItems.create({orderId,name,priceCents:data.priceCents,variantOptions:data.variantOptions?.length?data.variantOptions:undefined}));
+  }
+  private async openOrderForItem(itemId:string){
+    const item=await this.gearOrderItems.findOneBy({id:itemId});
+    if(!item)throw new NotFoundException('Item not found');
+    const order=await this.gearOrders.findOneBy({id:item.orderId});
+    if(!order)throw new NotFoundException('Gear order not found');
+    return {item,order};
+  }
+  async pickGearOrderItem(userId:string,itemId:string,data:{variant?:string;quantity?:number}){
+    const {item,order}=await this.openOrderForItem(itemId);
+    const member=await this.teamMembers.findOne({where:{teamId:order.teamId,userId,isActive:true}});
+    if(!member)throw new ForbiddenException('Team members only');
+    if(order.status!=='open')throw new ForbiddenException('This order is closed');
+    if(order.closesAt&&new Date(order.closesAt)<new Date())throw new ForbiddenException('The pick deadline for this order has passed');
+    const quantity=Math.max(1,Math.floor(data.quantity||1));
+    if(item.variantOptions?.length){
+      if(!data.variant||!item.variantOptions.includes(data.variant))throw new BadRequestException('Choose a valid size/option for this item');
+    } else if(data.variant){
+      throw new BadRequestException('This item has no size/variant options');
+    }
+    let pick=await this.gearOrderPicks.findOne({where:{itemId,userId}});
+    if(pick)Object.assign(pick,{variant:data.variant,quantity});
+    else pick=this.gearOrderPicks.create({orderId:order.id,itemId,userId,variant:data.variant,quantity});
+    return this.gearOrderPicks.save(pick);
+  }
+  async unpickGearOrderItem(userId:string,itemId:string){
+    const {order}=await this.openOrderForItem(itemId);
+    const member=await this.teamMembers.findOne({where:{teamId:order.teamId,userId,isActive:true}});
+    if(!member)throw new ForbiddenException('Team members only');
+    if(order.status!=='open')throw new ForbiddenException('This order is closed');
+    await this.gearOrderPicks.delete({itemId,userId});
+    return {message:'Pick removed'};
   }
 
   // Tournaments are CommunityEvents (eventType:'tournament') plus bracket

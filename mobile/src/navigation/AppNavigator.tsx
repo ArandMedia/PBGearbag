@@ -50,6 +50,7 @@ import FieldFeedScreen from "../screens/FieldFeedScreen";
 import PublicProfileScreen from "../screens/PublicProfileScreen";
 import FollowListScreen from "../screens/FollowListScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
+import TeamGearOrderScreen from "../screens/TeamGearOrderScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
@@ -325,6 +326,11 @@ function MainStack() {
         name="CommunityEntity"
         component={CommunityEntityScreen}
         options={detailOptions("Community")}
+      />
+      <Stack.Screen
+        name="TeamGearOrder"
+        component={TeamGearOrderScreen}
+        options={detailOptions("Gear Order")}
       />
     </Stack.Navigator>
   );
