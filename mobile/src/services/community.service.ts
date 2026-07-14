@@ -1,4 +1,5 @@
 import { apiClient } from './api';
+import type { Listing } from './marketplace.service';
 
 export type GearItem={id:string;name:string;category:string;manufacturer?:string;model?:string;color?:string;condition?:string;notes?:string;serviceDueAt?:string};
 export type Gearbag={id:string;name:string;description?:string;visibility:string;isPrimary:boolean;items:GearItem[]};
@@ -81,6 +82,7 @@ export const communityService={
   async createConversation(data:{type:string;participantIds:string[];subject?:string;contextId?:string}){return (await apiClient.post<Conversation>('/conversations',data)).data},
   async notifications(){return (await apiClient.get<Notification[]>('/notifications')).data}, async readNotification(id:string){return (await apiClient.patch(`/notifications/${id}/read`)).data},
   async favoriteListing(id:string){return (await apiClient.post(`/marketplace/${id}/favorite`)).data}, async unfavoriteListing(id:string){return apiClient.delete(`/marketplace/${id}/favorite`)},
+  async myFavorites(){return (await apiClient.get<Listing[]>('/marketplace/me/favorites/all')).data},
   async makeOffer(id:string,data:{amountCents?:number;tradeDescription?:string;message?:string}){return (await apiClient.post(`/marketplace/${id}/offers`,data)).data},
   async listingOffers(id:string){return (await apiClient.get<{id:string;buyerId:string;buyerName:string;amountCents?:number;tradeDescription?:string;message?:string;status:string;createdAt:string}[]>(`/marketplace/${id}/offers`)).data},
   async decideOffer(id:string,status:'accepted'|'declined'){return (await apiClient.patch(`/marketplace/offers/${id}`,{status})).data},

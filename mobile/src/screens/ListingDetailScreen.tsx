@@ -24,6 +24,8 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [offers, setOffers] = useState<{ id: string; buyerId: string; buyerName: string; amountCents?: number; tradeDescription?: string; message?: string; status: string; createdAt: string }[]>([]);
   const [decidingOfferId, setDecidingOfferId] = useState<string | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
 
   useEffect(() => {
     loadListing();
@@ -33,7 +35,27 @@ export default function ListingDetailScreen({ route, navigation }: any) {
     if (listing && user?.id === listing.sellerId) {
       communityService.listingOffers(listingId).then(setOffers).catch(() => {});
     }
+    if (listing && user?.id !== listing.sellerId) {
+      communityService.myFavorites().then((favs) => setIsFavorited(favs.some((f) => f.id === listingId))).catch(() => {});
+    }
   }, [listing?.sellerId, user?.id, listingId]);
+
+  const toggleFavorite = async () => {
+    setFavoriting(true);
+    try {
+      if (isFavorited) {
+        await communityService.unfavoriteListing(listing!.id);
+        setIsFavorited(false);
+      } else {
+        await communityService.favoriteListing(listing!.id);
+        setIsFavorited(true);
+      }
+    } catch {
+      Alert.alert('Error', 'Please try again in a moment.');
+    } finally {
+      setFavoriting(false);
+    }
+  };
 
   const decideOffer = async (id: string, status: 'accepted' | 'declined') => {
     setDecidingOfferId(id);
@@ -364,7 +386,9 @@ export default function ListingDetailScreen({ route, navigation }: any) {
               </Text>
             </TouchableOpacity>
             {!isSold&&<TouchableOpacity style={styles.successButton} onPress={()=>navigation.navigate('MakeOffer',{listing})}><Text style={styles.successButtonText}>Make an offer</Text></TouchableOpacity>}
-            <TouchableOpacity style={styles.secondaryButton} onPress={async()=>{await communityService.favoriteListing(listing.id);Alert.alert('Saved','This listing was added to your favorites.')}}><Text style={styles.secondaryButtonText}>♡ Save listing</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={toggleFavorite} disabled={favoriting}>
+              {favoriting ? <ActivityIndicator size="small" color="#D39A3A" /> : <Text style={styles.secondaryButtonText}>{isFavorited ? '♥ Saved' : '♡ Save listing'}</Text>}
+            </TouchableOpacity>
             <TouchableOpacity style={styles.dangerButton} onPress={()=>navigation.navigate('Report',{subjectId:listing.id,subjectType:'listing',title:listing.title})}><Text style={styles.dangerButtonText}>Report</Text></TouchableOpacity>
           </>)}
         </View>

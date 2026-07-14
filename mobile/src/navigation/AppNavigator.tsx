@@ -31,6 +31,7 @@ import MarketplaceFeedScreen from "../screens/MarketplaceFeedScreen";
 import ListingDetailScreen from "../screens/ListingDetailScreen";
 import CreateListingScreen from "../screens/CreateListingScreen";
 import MyListingsScreen from "../screens/MyListingsScreen";
+import FavoritesScreen from "../screens/FavoritesScreen";
 import HomeScreen from "../screens/HomeScreen";
 import EditListingScreen from "../screens/EditListingScreen";
 import DiscoverScreen from "../screens/DiscoverScreen";
@@ -244,6 +245,11 @@ function MainStack() {
         name="MyListings"
         component={MyListingsScreen}
         options={detailOptions("My Listings")}
+      />
+      <Stack.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={detailOptions("Saved Listings")}
       />
       <Stack.Screen
         name="Gearbag"

@@ -624,6 +624,14 @@ export default function ProfileScreen({ navigation }: any) {
             </Pressable>
             <Pressable
               style={s.quickRow}
+              onPress={() => navigation.getParent()?.navigate("Favorites")}
+            >
+              <Ionicons name="heart-outline" size={18} color={TURF} />
+              <Text style={s.quickText}>Saved listings</Text>
+              <Text style={s.rowArrow}>→</Text>
+            </Pressable>
+            <Pressable
+              style={s.quickRow}
               onPress={() => navigation.navigate("Messages")}
             >
               <Ionicons name="chatbubbles-outline" size={18} color={TURF} />

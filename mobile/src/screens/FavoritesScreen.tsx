@@ -1,0 +1,162 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import { Alert } from '../utils/alert';
+import { communityService } from '../services/community.service';
+import { Listing } from '../services/marketplace.service';
+
+export default function FavoritesScreen({ navigation }: any) {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  const loadFavorites = async () => {
+    try {
+      const items = await communityService.myFavorites();
+      setListings(items);
+    } catch (error) {
+      console.error('Failed to load favorites:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadFavorites();
+  };
+
+  const removeFavorite = async (id: string) => {
+    setRemovingId(id);
+    try {
+      await communityService.unfavoriteListing(id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+    } catch {
+      Alert.alert('Error', 'Could not remove this favorite. Please try again.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const renderListingCard = ({ item }: { item: Listing }) => {
+    const imageUrl = item.images && item.images.length > 0 ? item.images[0] : null;
+    const isSold = item.status === 'sold';
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
+        )}
+
+        {isSold && (
+          <View style={styles.soldBadge}>
+            <Text style={styles.soldText}>SOLD</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.removeBtn}
+          onPress={() => removeFavorite(item.id)}
+          disabled={removingId === item.id}
+        >
+          {removingId === item.id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.removeBtnText}>♥</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.title} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={styles.price}>${item.price.toLocaleString()}</Text>
+          <View style={styles.footer}>
+            <Text style={styles.status}>
+              {item.seller?.displayName || item.seller?.username || 'Seller'}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#D39A3A" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={listings}
+        renderItem={renderListingCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#D39A3A" />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No saved listings yet</Text>
+            <Text style={styles.emptySubtext}>
+              Tap "Save listing" on anything in the marketplace to find it here later.
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#101516' },
+  centerContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#101516' },
+  listContent: { padding: 16 },
+  card: { backgroundColor: '#283033', borderRadius: 12, marginBottom: 16, overflow: 'hidden', position: 'relative' },
+  image: { width: '100%', height: 150, backgroundColor: '#333' },
+  imagePlaceholder: { width: '100%', height: 150, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  placeholderText: { color: '#666', fontSize: 14 },
+  soldBadge: {
+    position: 'absolute', top: 12, right: 12, backgroundColor: '#ff3b30',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+  },
+  soldText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  removeBtn: {
+    position: 'absolute', top: 12, left: 12, width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
+  removeBtnText: { color: '#ff3b30', fontSize: 18 },
+  cardContent: { padding: 12 },
+  title: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 8 },
+  price: { fontSize: 18, fontWeight: 'bold', color: '#7E9F45', marginBottom: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#333' },
+  status: { fontSize: 12, color: '#D39A3A' },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 30 },
+  emptyText: { fontSize: 18, color: '#888', marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: '#666', textAlign: 'center' },
+});
