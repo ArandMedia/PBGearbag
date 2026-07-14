@@ -67,6 +67,7 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Get('claims') @Roles(UserRole.ADMIN) claims(){return this.s.listOrganizationClaims()}
   @Patch('claims/:id') @Roles(UserRole.ADMIN) decideClaim(@Param('id')id:string,@Body()d:ClaimDecisionDto){return this.s.decideOrganizationClaim(id,d.status)}
   @Post('import-osm') @Roles(UserRole.ADMIN) importOsm(@Body()d:OsmImportDto){return this.s.importOsmFields(d.bbox)}
+  @Post('import-directory') @Roles(UserRole.ADMIN) importDirectory(@Query('offset')offset?:string,@Query('limit')limit?:string){return this.s.importDirectoryChunk(offset?Number(offset):0,limit?Number(limit):15)}
   @Delete('cleanup-unnamed') @Roles(UserRole.ADMIN) cleanupUnnamed(){return this.s.cleanupUnnamedOrganizations()}
   @Delete('cleanup-duplicates') @Roles(UserRole.ADMIN) cleanupDuplicates(){return this.s.cleanupDuplicateOrganizations()}
   @Get('quality-report') @Roles(UserRole.ADMIN) qualityReport(){return this.s.organizationQualityReport()}

@@ -7,6 +7,8 @@ import { SocialService } from '../social/social.service';
 import { BillingService } from '../billing/billing.service';
 import { Announcement, AnnouncementSourceType, ApplicationStatus, CommunityEvent, Conversation, ConversationParticipant, EventRsvp, EventStatus, Gearbag, GearItem, ListingFavorite, ListingOffer, Message, Notification, OfferStatus, Organization, OrganizationClaim, OrganizationFollow, Report, ReportStatus, Review, RsvpStatus, Team, TeamApplication, TeamMember, TeamMemberRole, Tournament, TournamentEntry, TournamentFormat, TournamentMatch, Visibility } from './entities/community.entity';
 import { importOsmFields as runOsmImport } from './osm-import.util';
+import { importDirectoryBatch } from './directory-import.util';
+import { DIRECTORY_ENTRIES } from '../config/directory-import-data';
 import { advanceMatch, generateSingleEliminationBracket } from './tournament-bracket.util';
 
 @Injectable()
@@ -105,6 +107,18 @@ export class CommunityService {
   async importOsmFields(bbox:string){
     try{return await runOsmImport(this.organizations,bbox)}
     catch(error:any){throw new BadGatewayException(`OSM import failed: ${error?.message||error}`)}
+  }
+  // Chunked so a single HTTP call stays well under any proxy timeout —
+  // geocoding each entry against Nominatim takes ~1-2s, and the full list
+  // is processed a slice at a time by repeated calls with increasing
+  // offsets (same shape as the OSM batch importer's per-region calls).
+  async importDirectoryChunk(offset:number,limit:number){
+    const slice=DIRECTORY_ENTRIES.slice(offset,offset+limit);
+    if(!slice.length)return{...(await importDirectoryBatch(this.organizations,[])),processed:0,total:DIRECTORY_ENTRIES.length,done:true};
+    try{
+      const result=await importDirectoryBatch(this.organizations,slice);
+      return{...result,processed:offset+slice.length,total:DIRECTORY_ENTRIES.length,done:offset+slice.length>=DIRECTORY_ENTRIES.length};
+    }catch(error:any){throw new BadGatewayException(`Directory import failed: ${error?.message||error}`)}
   }
   // Removes the placeholder rows an earlier version of the importer created
   // for OSM nodes with no name tag ("Unnamed Paintball Field/Shop") — bare
