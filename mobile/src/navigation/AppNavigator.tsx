@@ -52,6 +52,7 @@ import FollowListScreen from "../screens/FollowListScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
 import TeamGearOrderScreen from "../screens/TeamGearOrderScreen";
 import NotFoundScreen from "../screens/NotFoundScreen";
+import CreateEventScreen from "../screens/CreateEventScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
@@ -337,6 +338,11 @@ function MainStack() {
         name="NotFound"
         component={NotFoundScreen}
         options={detailOptions("Not Found")}
+      />
+      <Stack.Screen
+        name="CreateEvent"
+        component={CreateEventScreen}
+        options={detailOptions("Host an Event")}
       />
     </Stack.Navigator>
   );

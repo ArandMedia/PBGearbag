@@ -4,7 +4,7 @@ export type GearItem={id:string;name:string;category:string;manufacturer?:string
 export type Gearbag={id:string;name:string;description?:string;visibility:string;isPrimary:boolean;items:GearItem[]};
 export type Team={id:string;slug:string;name:string;teamType:string;description?:string;city?:string;region?:string;country?:string;isRecruiting:boolean;bannerUrl?:string;createdAt?:string;moderationStatus?:string};
 export type Organization={id:string;slug:string;name:string;type:string;description?:string;city?:string;region?:string;country?:string;address?:string;latitude?:number;longitude?:number;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;isVerified:boolean;images?:string[];details?:Record<string,unknown>;claimedById?:string;followerCount?:number;moderationStatus?:string};
-export type Event={id:string;slug:string;title:string;eventType:string;description:string;startsAt:string;endsAt:string;city?:string;region?:string;costCents?:number;capacity?:number;bannerUrl?:string;status:string;organizerId?:string;moderationStatus?:string;teamId?:string};
+export type Event={id:string;slug:string;title:string;eventType:string;description:string;startsAt:string;endsAt:string;city?:string;region?:string;country?:string;registrationUrl?:string;costCents?:number;capacity?:number;bannerUrl?:string;status:string;organizerId?:string;moderationStatus?:string;teamId?:string};
 export type Announcement={id:string;sourceType:'organization'|'event'|'team';sourceId:string;authorId:string;title:string;body:string;expiresAt?:string;createdAt:string;sourceName?:string;sourceSlug?:string};
 export type OrganizationClaim={id:string;organizationId:string;userId:string;note?:string;status:string;createdAt:string};
 export type Tournament={id:string;eventId:string;format:string;maxTeams?:number;registrationClosesAt?:string;status:string;createdAt?:string};
@@ -55,6 +55,8 @@ export const communityService={
   async deleteOrganization(id:string){return (await apiClient.delete<{message:string}>(`/organizations/${id}`)).data},
   async events(){return (await apiClient.get<Event[]>('/events')).data}, async rsvp(id:string,status:'interested'|'going'|'not_going'){return (await apiClient.post(`/events/${id}/rsvp`,{status})).data},
   async event(slug:string){return (await apiClient.get<Event>(`/events/${slug}`)).data},
+  async createEvent(data:{title:string;eventType:string;description:string;startsAt:string;endsAt:string;timezone:string;city?:string;region?:string;country?:string;registrationUrl?:string;costCents?:number;capacity?:number}){return (await apiClient.post<Event>('/events',data)).data},
+  async eventAttendees(id:string){return (await apiClient.get<{userId:string;userName:string;status:string;createdAt:string}[]>(`/events/${id}/attendees`)).data},
   async createTournament(data:{organizationId:string;title:string;description?:string;startsAt:string;endsAt:string;timezone:string;city?:string;region?:string;maxTeams?:number;registrationClosesAt?:string}){return (await apiClient.post<{event:Event;tournament:Tournament}>('/tournaments',data)).data},
   async tournament(eventId:string){return (await apiClient.get<{tournament:Tournament;entries:TournamentEntry[];matches:TournamentMatch[]}>(`/tournaments/${eventId}`)).data},
   async registerTournamentTeam(tournamentId:string,teamId:string){return (await apiClient.post<TournamentEntry>(`/tournaments/${tournamentId}/register`,{teamId})).data},

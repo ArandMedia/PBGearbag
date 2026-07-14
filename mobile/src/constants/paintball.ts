@@ -1,3 +1,22 @@
+export const paintballEventTypes = [
+  ["speedball", "Speedball"],
+  ["tournament", "Tournament"],
+  ["mechanical", "Mechanical"],
+  ["pump", "Pump"],
+  ["woodsball", "Woodsball"],
+  ["scenario", "Scenario"],
+  ["big_game", "Big game"],
+  ["magfed", "MagFed"],
+  ["open_play", "Open play"],
+  ["recreational", "Recreational"],
+  ["league", "League"],
+  ["clinic", "Clinic / camp"],
+  ["team_tryout", "Team tryout"],
+  ["charity", "Charity"],
+  ["private_event", "Private event"],
+  ["trade_show", "Expo / trade show"],
+] as const;
+
 // Amenity tokens stay in sync with what OrganizationClaim.details (and the
 // OSM importer's amenity mapping) actually stores.
 export const paintballAmenities = [

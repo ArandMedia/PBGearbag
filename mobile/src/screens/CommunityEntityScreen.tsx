@@ -106,6 +106,7 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
   const [goClosesAt, setGoClosesAt] = useState("");
   const [goItems, setGoItems] = useState([{ name: "", price: "", sizes: "" }]);
   const [creatingGearOrder, setCreatingGearOrder] = useState(false);
+  const [eventAttendees, setEventAttendees] = useState<{ userId: string; userName: string; status: string; createdAt: string }[] | null>(null);
   const [registeringTournament, setRegisteringTournament] = useState(false);
   const [startingTournament, setStartingTournament] = useState(false);
   const [reportingMatchId, setReportingMatchId] = useState<string | null>(null);
@@ -167,7 +168,10 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
       communityService.tournament(data.id).then(setTournamentData).catch(() => {});
       if (user?.id) communityService.myTeam(user.id).then(setMyManagedTeam).catch(() => {});
     }
-  }, [data?.id, kind, data?.eventType, user?.id]);
+    if (kind === "event" && data.organizerId === user?.id) {
+      communityService.eventAttendees(data.id).then(setEventAttendees).catch(() => {});
+    }
+  }, [data?.id, kind, data?.eventType, data?.organizerId, user?.id]);
 
   if (!data)
     return (
@@ -183,8 +187,11 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
     try {
       await communityService.rsvp(data.id, status);
       setRsvpStatus(status);
-    } catch {
-      Alert.alert("Couldn't save your RSVP", "Please try again in a moment.");
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't save your RSVP",
+        e?.response?.data?.error?.message || e?.response?.data?.message || "Please try again in a moment.",
+      );
     } finally {
       setRsvpBusy(false);
     }
@@ -546,7 +553,9 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
           <Text style={s.detail}>CAPACITY · {data.capacity} players</Text>
         )}
         {kind === "event" && data.registrationUrl && (
-          <Text style={s.detail}>REGISTRATION · {data.registrationUrl}</Text>
+          <Pressable style={[s.directionsBtn, { borderColor: accent }]} onPress={() => Linking.openURL(data.registrationUrl)}>
+            <Text style={[s.directionsBtnText, { color: accent }]}>GET TICKETS ↗</Text>
+          </Pressable>
         )}
         {kind === "field" && data.address && (
           <Text style={s.detail}>ADDRESS · {data.address}</Text>
@@ -573,6 +582,31 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
           </Pressable>
         )}
       </View>
+
+      {kind === "event" && data.organizerId === user?.id && eventAttendees && (
+        <View style={s.card}>
+          <Text style={s.label}>ATTENDEES</Text>
+          {!eventAttendees.length ? (
+            <Text style={s.emptyAnnounce}>No RSVPs yet.</Text>
+          ) : (
+            <>
+              <Text style={s.place}>
+                {eventAttendees.filter((a) => a.status === "going").length} going
+                {data.capacity != null ? ` of ${data.capacity}` : ""} ·{" "}
+                {eventAttendees.filter((a) => a.status === "interested").length} interested
+              </Text>
+              {eventAttendees.map((a) => (
+                <View key={a.userId} style={s.eventRow}>
+                  <Text style={s.eventTitle} numberOfLines={1}>{a.userName}</Text>
+                  <Text style={[s.eventDate, { color: a.status === "going" ? accent : "#75817B" }]}>
+                    {a.status.replace("_", " ").toUpperCase()}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+      )}
 
       {kind === "field" && amenities.length > 0 && (
         <View style={s.card}>

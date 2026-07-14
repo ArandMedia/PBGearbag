@@ -288,7 +288,33 @@ export class CommunityService {
     }));
     return event;
   }
-  async rsvpEvent(userId:string,eventId:string,status:RsvpStatus,visibility=Visibility.MEMBERS){const event=await this.events.findOneBy({id:eventId});if(!event||event.status!==EventStatus.PUBLISHED)throw new NotFoundException('Published event not found');let rsvp=await this.rsvps.findOne({where:{eventId,userId}});if(!rsvp)rsvp=this.rsvps.create({eventId,userId,status,visibility});else Object.assign(rsvp,{status,visibility});return this.rsvps.save(rsvp)}
+  async rsvpEvent(userId:string,eventId:string,status:RsvpStatus,visibility=Visibility.MEMBERS){
+    const event=await this.events.findOneBy({id:eventId});
+    if(!event||event.status!==EventStatus.PUBLISHED)throw new NotFoundException('Published event not found');
+    let rsvp=await this.rsvps.findOne({where:{eventId,userId}});
+    if(status===RsvpStatus.GOING&&event.capacity!=null&&rsvp?.status!==RsvpStatus.GOING){
+      const goingCount=await this.rsvps.count({where:{eventId,status:RsvpStatus.GOING}});
+      if(goingCount>=event.capacity)throw new ForbiddenException('This event is at capacity');
+    }
+    if(!rsvp)rsvp=this.rsvps.create({eventId,userId,status,visibility});
+    else Object.assign(rsvp,{status,visibility});
+    return this.rsvps.save(rsvp);
+  }
+  // Organizer-only roster — mirrors the gear-order manager tally pattern:
+  // aggregate counts are public (via getEvent), the actual who's-coming
+  // list is only for the person running the event.
+  async eventAttendees(userId:string,eventId:string){
+    const event=await this.events.findOneBy({id:eventId});
+    if(!event)throw new NotFoundException('Event not found');
+    if(event.organizerId!==userId)throw new ForbiddenException('Only the organizer can view attendees');
+    const rsvps=await this.rsvps.find({where:{eventId},order:{createdAt:'ASC'}});
+    if(!rsvps.length)return [];
+    const attendees=await this.users.find({where:{id:In(rsvps.map(r=>r.userId))}});
+    return rsvps.map(r=>{
+      const u=attendees.find(a=>a.id===r.userId);
+      return {userId:r.userId,userName:u?.displayName||u?.username||'Someone',status:r.status,createdAt:r.createdAt};
+    });
+  }
   async myUpcomingEvents(userId:string,limit=5){const going=await this.rsvps.find({where:{userId,status:RsvpStatus.GOING}});if(!going.length)return [];return this.events.find({where:{id:In(going.map(x=>x.eventId)),status:EventStatus.PUBLISHED},order:{startsAt:'ASC'},take:limit})}
 
   // Team practices are events scoped private to a roster — same title/time

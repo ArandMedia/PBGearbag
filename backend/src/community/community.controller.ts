@@ -109,6 +109,7 @@ export class EventsController { constructor(private s:CommunityService){}
   @Get() @Public() list(){return this.s.listEvents()} @Get(':slug') @Public() one(@Param('slug')slug:string){return this.s.getEvent(slug)}
   @Post() create(@CurrentUser()u:User,@Body()d:EventDto){return this.s.createEvent(u.id,d as any)} @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<EventDto>){return this.s.updateEvent(u.id,id,d as any)}
   @Post(':id/rsvp') rsvp(@CurrentUser()u:User,@Param('id')id:string,@Body()d:RsvpDto){return this.s.rsvpEvent(u.id,id,d.status,d.visibility)}
+  @Get(':id/attendees') attendees(@CurrentUser()u:User,@Param('id')id:string){return this.s.eventAttendees(u.id,id)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('event',id)}
   @Post(':id/announcements') announce(@CurrentUser()u:User,@Param('id')id:string,@Body()d:AnnouncementDto){return this.s.createAnnouncement(u.id,'event',id,d)}
 }

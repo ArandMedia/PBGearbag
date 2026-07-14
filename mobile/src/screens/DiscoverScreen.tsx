@@ -18,7 +18,7 @@ import {
   Organization,
   Team,
 } from "../services/community.service";
-import { paintballAmenities, paintballPlaceTypes } from "../constants/paintball";
+import { paintballAmenities, paintballEventTypes, paintballPlaceTypes } from "../constants/paintball";
 import { useTheme, DEFAULT_ACCENT } from "../store/ThemeContext";
 import { hexToRgba } from "../utils/color";
 import OrganizationsMap from "../components/OrganizationsMap";
@@ -27,24 +27,6 @@ type Mode = "events" | "fields" | "teams";
 type FieldsView = "list" | "map";
 type DateFilter = "all" | "30" | "90";
 type PriceFilter = "all" | "free" | "paid";
-const paintballEventTypes = [
-  ["speedball", "Speedball"],
-  ["tournament", "Tournament"],
-  ["mechanical", "Mechanical"],
-  ["pump", "Pump"],
-  ["woodsball", "Woodsball"],
-  ["scenario", "Scenario"],
-  ["big_game", "Big game"],
-  ["magfed", "MagFed"],
-  ["open_play", "Open play"],
-  ["recreational", "Recreational"],
-  ["league", "League"],
-  ["clinic", "Clinic / camp"],
-  ["team_tryout", "Team tryout"],
-  ["charity", "Charity"],
-  ["private_event", "Private event"],
-  ["trade_show", "Expo / trade show"],
-] as const;
 function Chip({
   label,
   on,
@@ -323,6 +305,11 @@ export default function DiscoverScreen({ navigation }: any) {
             </Text>
           </Pressable>
         ))}
+        {mode === "events" && (
+          <Pressable style={[s.hostEventBtn, { borderColor: LIME }]} onPress={() => navigation.navigate("CreateEvent")}>
+            <Text style={[s.hostEventBtnText, { color: LIME }]}>+ HOST AN EVENT</Text>
+          </Pressable>
+        )}
       </View>
       <View style={s.discoveryBar}>
         <View style={[s.searches, compact && { flexDirection: "column" }]}>
@@ -854,6 +841,14 @@ const s = StyleSheet.create({
   tabTextOn: { color: "#0B0F0D" },
   tabCount: { color: "#677279", fontSize: 9, fontWeight: "900" },
   tabCountOn: { color: "#4B681E" },
+  hostEventBtn: {
+    marginLeft: "auto",
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 17,
+    paddingVertical: 11,
+  },
+  hostEventBtnText: { fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   discoveryBar: {
     backgroundColor: "#101518",
     borderWidth: 1,
