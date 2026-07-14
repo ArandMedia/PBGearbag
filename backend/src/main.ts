@@ -7,10 +7,19 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as express from 'express';
 import { join } from 'path';
+import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import rateLimit from 'express-rate-limit';
+
+// Inert until SENTRY_DSN is set — no account has been created for this yet,
+// so this just no-ops in every environment today. Initialized before
+// NestFactory.create so Sentry's Node auto-instrumentation can hook into
+// the process from the very first tick.
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development', tracesSampleRate: 0.1 });
+}
 
 export async function createApp() {
   // Body parsing is disabled here and configured manually below — the

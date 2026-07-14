@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
@@ -16,6 +17,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     if (status >= 500) {
       this.logger.error(JSON.stringify({ requestId, method: request.method, path: request.url, status }), exception instanceof Error ? exception.stack : undefined);
+      // No-ops if SENTRY_DSN isn't set (Sentry.init was never called in
+      // main.ts) — safe to call unconditionally rather than threading an
+      // "is Sentry enabled" flag through here.
+      Sentry.captureException(exception, { extra: { requestId, path: request.url } });
     }
 
     response.status(status).json({

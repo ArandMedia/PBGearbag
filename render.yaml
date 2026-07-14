@@ -39,3 +39,13 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: PBGearbag <noreply@pbgearbag.com>
+      # Preferred email path (see deliverToken in auth.service.ts) — Render's
+      # free tier blocks outbound SMTP, so this needs to be set for
+      # verification/reset emails to actually send. Not set here on purpose:
+      # verify/set the real key in the Render dashboard.
+      - key: RESEND_API_KEY
+        sync: false
+      # Optional — error tracking is inert until this is set to a real DSN
+      # from a Sentry project (see main.ts / api-exception.filter.ts).
+      - key: SENTRY_DSN
+        sync: false

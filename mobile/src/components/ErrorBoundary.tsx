@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DEFAULT_ACCENT } from "../store/ThemeContext";
+import { captureException } from "../utils/errorTracking";
 
 interface Props {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("Unhandled render error:", error, info.componentStack);
+    captureException(error, { componentStack: info.componentStack });
   }
 
   reset = () => this.setState({ error: null });
