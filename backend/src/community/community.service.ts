@@ -631,7 +631,47 @@ export class CommunityService {
   async unfavoriteListing(userId:string,listingId:string){await this.favorites.delete({listingId,userId})}
   async myFavorites(userId:string){const favs=await this.favorites.find({where:{userId}});return favs.length?this.listings.find({where:{id:In(favs.map(x=>x.listingId))},relations:['seller']}):[]}
   async makeOffer(userId:string,listingId:string,data:Partial<ListingOffer>){const listing=await this.activeListing(listingId);if(listing.sellerId===userId)throw new BadRequestException('You cannot offer on your own listing');if(await this.social.isBlockedEitherWay(userId,listing.sellerId))throw new ForbiddenException("You can't offer on this listing.");const offer=await this.offers.save(this.offers.create({...data,listingId,buyerId:userId,status:OfferStatus.PENDING}));const actor=await this.actorName(userId);await this.notifications.save(this.notifications.create({userId:listing.sellerId,type:'offer',title:'New offer',body:`${actor} made an offer on ${listing.title}`,data:{listingId,offerId:offer.id}}));return offer}
-  async listingOffers(userId:string,listingId:string){const listing=await this.listings.findOneBy({id:listingId});if(!listing)throw new NotFoundException('Listing not found');if(listing.sellerId!==userId)throw new ForbiddenException('Only the seller can view offers');return this.offers.find({where:{listingId},order:{createdAt:'DESC'}})}
+  async listingOffers(userId:string,listingId:string){
+    const listing=await this.listings.findOneBy({id:listingId});
+    if(!listing)throw new NotFoundException('Listing not found');
+    if(listing.sellerId!==userId)throw new ForbiddenException('Only the seller can view offers');
+    const offers=await this.offers.find({where:{listingId},order:{createdAt:'DESC'}});
+    if(!offers.length)return [];
+    const buyers=await this.users.find({where:{id:In(offers.map(o=>o.buyerId))}});
+    return offers.map(o=>({...o,buyerName:buyers.find(b=>b.id===o.buyerId)?.displayName||buyers.find(b=>b.id===o.buyerId)?.username||'Someone'}));
+  }
+  // Accepting an offer auto-declines every other still-pending offer on the
+  // same listing — a physical item can only go to one buyer, and leaving
+  // the rest pending would just confuse sellers into thinking they still
+  // need to individually reject each one.
+  async decideOffer(userId:string,offerId:string,status:OfferStatus.ACCEPTED|OfferStatus.DECLINED){
+    const offer=await this.offers.findOneBy({id:offerId});
+    if(!offer)throw new NotFoundException('Offer not found');
+    const listing=await this.listings.findOneBy({id:offer.listingId});
+    if(!listing)throw new NotFoundException('Listing not found');
+    if(listing.sellerId!==userId)throw new ForbiddenException('Only the seller can respond to offers');
+    if(offer.status!==OfferStatus.PENDING)throw new BadRequestException('This offer has already been decided');
+    offer.status=status;
+    await this.offers.save(offer);
+    await this.notifications.save(this.notifications.create({
+      userId:offer.buyerId,
+      type:status===OfferStatus.ACCEPTED?'offer_accepted':'offer_declined',
+      title:status===OfferStatus.ACCEPTED?'Your offer was accepted':'Your offer was declined',
+      body:status===OfferStatus.ACCEPTED?`${listing.title}'s seller accepted your offer.`:`${listing.title}'s seller declined your offer.`,
+      data:{listingId:listing.id,offerId:offer.id},
+    }));
+    if(status===OfferStatus.ACCEPTED){
+      const others=await this.offers.find({where:{listingId:listing.id,status:OfferStatus.PENDING}});
+      if(others.length){
+        await this.offers.save(others.map(o=>({...o,status:OfferStatus.DECLINED})));
+        await this.notifications.save(others.map(o=>this.notifications.create({
+          userId:o.buyerId,type:'offer_declined',title:'Your offer was declined',
+          body:`${listing.title} sold to another buyer.`,data:{listingId:listing.id,offerId:o.id},
+        })));
+      }
+    }
+    return offer;
+  }
 
   myNotifications(userId:string){return this.notifications.find({where:{userId},order:{createdAt:'DESC'},take:100})}
   async readNotification(userId:string,id:string){const n=await this.notifications.findOne({where:{id,userId}});if(!n)throw new NotFoundException('Notification not found');n.readAt=new Date();return this.notifications.save(n)}

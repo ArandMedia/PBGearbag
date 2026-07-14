@@ -80,6 +80,8 @@ export const communityService={
   async notifications(){return (await apiClient.get<Notification[]>('/notifications')).data}, async readNotification(id:string){return (await apiClient.patch(`/notifications/${id}/read`)).data},
   async favoriteListing(id:string){return (await apiClient.post(`/marketplace/${id}/favorite`)).data}, async unfavoriteListing(id:string){return apiClient.delete(`/marketplace/${id}/favorite`)},
   async makeOffer(id:string,data:{amountCents?:number;tradeDescription?:string;message?:string}){return (await apiClient.post(`/marketplace/${id}/offers`,data)).data},
+  async listingOffers(id:string){return (await apiClient.get<{id:string;buyerId:string;buyerName:string;amountCents?:number;tradeDescription?:string;message?:string;status:string;createdAt:string}[]>(`/marketplace/${id}/offers`)).data},
+  async decideOffer(id:string,status:'accepted'|'declined'){return (await apiClient.patch(`/marketplace/offers/${id}`,{status})).data},
   async report(data:{subjectId:string;subjectType:string;category:string;description:string}){return (await apiClient.post('/reports',data)).data},
   async reports(){return (await apiClient.get<Report[]>('/reports')).data}, async resolveReport(id:string,status:'reviewing'|'resolved'|'dismissed',resolutionNotes?:string){return (await apiClient.patch(`/reports/${id}`,{status,resolutionNotes})).data},
 };

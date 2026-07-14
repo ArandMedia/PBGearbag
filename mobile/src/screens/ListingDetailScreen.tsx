@@ -22,10 +22,32 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [offers, setOffers] = useState<{ id: string; buyerId: string; buyerName: string; amountCents?: number; tradeDescription?: string; message?: string; status: string; createdAt: string }[]>([]);
+  const [decidingOfferId, setDecidingOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     loadListing();
   }, [listingId]);
+
+  useEffect(() => {
+    if (listing && user?.id === listing.sellerId) {
+      communityService.listingOffers(listingId).then(setOffers).catch(() => {});
+    }
+  }, [listing?.sellerId, user?.id, listingId]);
+
+  const decideOffer = async (id: string, status: 'accepted' | 'declined') => {
+    setDecidingOfferId(id);
+    try {
+      await communityService.decideOffer(id, status);
+      const refreshed = await communityService.listingOffers(listingId);
+      setOffers(refreshed);
+      if (status === 'accepted') Alert.alert('Offer accepted', 'The buyer has been notified. Other pending offers on this listing were automatically declined.');
+    } catch (e: any) {
+      Alert.alert("Couldn't update this offer", e?.response?.data?.error?.message || e?.response?.data?.message || 'Please try again in a moment.');
+    } finally {
+      setDecidingOfferId(null);
+    }
+  };
 
   const loadListing = async () => {
     try {
@@ -263,6 +285,36 @@ export default function ListingDetailScreen({ route, navigation }: any) {
             </View>
           </View>
         </View>
+
+        {/* Offers (seller only) */}
+        {isOwner && offers.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Offers ({offers.filter((o) => o.status === 'pending').length} pending)</Text>
+            {offers.map((o) => (
+              <View key={o.id} style={styles.offerRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.offerBuyer}>{o.buyerName}</Text>
+                  <Text style={styles.offerDetail}>
+                    {o.amountCents != null ? `$${(o.amountCents / 100).toLocaleString()}` : ''}
+                    {o.tradeDescription ? `${o.amountCents != null ? ' + ' : ''}Trade: ${o.tradeDescription}` : ''}
+                  </Text>
+                  {!!o.message && <Text style={styles.offerMessage} numberOfLines={2}>{o.message}</Text>}
+                  {o.status !== 'pending' && <Text style={styles.offerStatus}>{o.status.toUpperCase()}</Text>}
+                </View>
+                {o.status === 'pending' && (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity style={styles.offerAcceptBtn} onPress={() => decideOffer(o.id, 'accepted')} disabled={decidingOfferId === o.id}>
+                      {decidingOfferId === o.id ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.offerBtnText}>Accept</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.offerDeclineBtn} onPress={() => decideOffer(o.id, 'declined')} disabled={decidingOfferId === o.id}>
+                      <Text style={[styles.offerBtnText, { color: '#ff3b30' }]}>Decline</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Meta Info */}
         <View style={styles.footer}>
@@ -573,4 +625,19 @@ const styles = StyleSheet.create({
     color: '#ff3b30',
     fontSize: 16,
   },
+  offerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#283033',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  offerBuyer: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  offerDetail: { color: '#7E9F45', fontSize: 14, fontWeight: '700', marginTop: 4 },
+  offerMessage: { color: '#ccc', fontSize: 13, marginTop: 4 },
+  offerStatus: { color: '#888', fontSize: 11, fontWeight: '900', marginTop: 6 },
+  offerAcceptBtn: { backgroundColor: '#7E9F45', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
+  offerDeclineBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: '#ff3b30' },
+  offerBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });

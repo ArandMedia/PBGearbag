@@ -5,7 +5,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { CommunityService } from './community.service';
-import { ApplicationStatus, ConversationType, EventStatus, OrganizationType, ReportStatus, RsvpStatus, TeamMemberRole, Visibility } from './entities/community.entity';
+import { ApplicationStatus, ConversationType, EventStatus, OfferStatus, OrganizationType, ReportStatus, RsvpStatus, TeamMemberRole, Visibility } from './entities/community.entity';
 
 class GearbagDto { @IsString() @IsNotEmpty() name:string; @IsOptional() @IsString() description?:string; @IsOptional() @IsEnum(Visibility) visibility?:Visibility; @IsOptional() @IsBoolean() isPrimary?:boolean }
 class GearItemDto { @IsString() @IsNotEmpty() name:string; @IsString() category:string; @IsOptional() @IsString() manufacturer?:string; @IsOptional() @IsString() model?:string; @IsOptional() @IsString() color?:string; @IsOptional() @IsString() condition?:string; @IsOptional() @IsString() serialNumber?:string; @IsOptional() @IsArray() @IsString({each:true}) images?:string[]; @IsOptional() @IsString() notes?:string; @IsOptional() @IsDateString() acquiredAt?:any; @IsOptional() @IsDateString() serviceDueAt?:any }
@@ -23,6 +23,7 @@ class RsvpDto { @IsEnum(RsvpStatus) status:RsvpStatus; @IsOptional() @IsEnum(Vis
 class ConversationDto { @IsEnum(ConversationType) type:ConversationType; @IsArray() @IsString({each:true}) participantIds:string[]; @IsOptional() @IsString() subject?:string; @IsOptional() @IsString() contextId?:string }
 class MessageDto { @IsString() @IsNotEmpty() body:string; @IsOptional() @IsArray() @IsString({each:true}) attachments?:string[] }
 class OfferDto { @IsOptional() @IsInt() @Min(1) amountCents?:number; @IsOptional() @IsString() tradeDescription?:string; @IsOptional() @IsString() message?:string }
+class OfferDecisionDto { @IsEnum(OfferStatus) status:OfferStatus.ACCEPTED|OfferStatus.DECLINED }
 class ReportDto { @IsString() subjectId:string; @IsString() subjectType:string; @IsString() category:string; @IsString() @IsNotEmpty() description:string }
 class ResolveReportDto { @IsEnum(ReportStatus) status:ReportStatus; @IsOptional() @IsString() resolutionNotes?:string; @IsOptional() @IsString() assignedToId?:string }
 class ReviewDto { @IsString() subjectId:string; @IsString() subjectType:string; @IsInt() @Min(1) @Max(5) rating:number; @IsOptional() @IsString() body?:string; @IsOptional() @IsString() outcomeId?:string }
@@ -136,6 +137,7 @@ export class MessagesController { constructor(private s:CommunityService){}
 export class MarketplaceTrustController { constructor(private s:CommunityService){}
   @Post(':id/favorite') favorite(@CurrentUser()u:User,@Param('id')id:string){return this.s.favoriteListing(u.id,id)} @Delete(':id/favorite') async unfavorite(@CurrentUser()u:User,@Param('id')id:string){await this.s.unfavoriteListing(u.id,id);return{message:'Favorite removed'}}
   @Get('me/favorites/all') favorites(@CurrentUser()u:User){return this.s.myFavorites(u.id)} @Post(':id/offers') offer(@CurrentUser()u:User,@Param('id')id:string,@Body()d:OfferDto){return this.s.makeOffer(u.id,id,d)} @Get(':id/offers') offers(@CurrentUser()u:User,@Param('id')id:string){return this.s.listingOffers(u.id,id)}
+  @Patch('offers/:id') decideOffer(@CurrentUser()u:User,@Param('id')id:string,@Body()d:OfferDecisionDto){return this.s.decideOffer(u.id,id,d.status)}
 }
 
 @Controller('notifications')
