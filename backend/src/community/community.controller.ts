@@ -1,9 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Max, Min } from 'class-validator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
+import { BillingService } from '../billing/billing.service';
+import { UploadService } from '../common/services/upload.service';
 import { CommunityService } from './community.service';
 import { ApplicationStatus, ConversationType, EventStatus, OfferStatus, OrganizationType, ReportStatus, RsvpStatus, TeamMemberRole, Visibility } from './entities/community.entity';
 
@@ -36,7 +39,7 @@ class TournamentRegisterDto { @IsString() @IsNotEmpty() teamId:string }
 class TournamentResultDto { @IsInt() @Min(0) teamAScore:number; @IsInt() @Min(0) teamBScore:number }
 
 @Controller('gearbags')
-export class GearbagsController { constructor(private s:CommunityService){}
+export class GearbagsController { constructor(private s:CommunityService, private uploads:UploadService, private billing:BillingService){}
   @Get('me') mine(@CurrentUser()u:User){return this.s.myGearbags(u.id)}
   @Post() create(@CurrentUser()u:User,@Body()d:GearbagDto){return this.s.createGearbag(u.id,d)}
   @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<GearbagDto>){return this.s.updateGearbag(u.id,id,d)}
@@ -44,6 +47,15 @@ export class GearbagsController { constructor(private s:CommunityService){}
   @Post(':id/items') item(@CurrentUser()u:User,@Param('id')id:string,@Body()d:GearItemDto){return this.s.addGearItem(u.id,id,d)}
   @Patch('items/:id') updateItem(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Partial<GearItemDto>){return this.s.updateGearItem(u.id,id,d)}
   @Post('items/:id/archive') archive(@CurrentUser()u:User,@Param('id')id:string){return this.s.archiveGearItem(u.id,id)}
+  @Post('upload') @UseInterceptors(FileInterceptor('file')) async upload(@CurrentUser()u:User,@UploadedFile()file:Express.Multer.File){
+    const {isPro}=await this.billing.getStatus(u.id);
+    if(!isPro)throw new ForbiddenException('Gear photos are a Pro feature. Upgrade to Pro to add photos to your gearbag.');
+    if(!file)throw new BadRequestException('No image selected');
+    const allowed=['image/jpeg','image/png','image/webp'];
+    if(!allowed.includes(file.mimetype))throw new BadRequestException('Use a JPG, PNG, or WebP image');
+    if(file.size>15*1024*1024)throw new BadRequestException('Image must be under 15MB');
+    return {imageUrl: await this.uploads.uploadFile(file,'gearbag')};
+  }
 }
 
 @Controller('teams')

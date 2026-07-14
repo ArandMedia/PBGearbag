@@ -26,13 +26,32 @@ export class CommunityService {
     @InjectRepository(TeamGearOrder) private gearOrders:Repository<TeamGearOrder>, @InjectRepository(TeamGearOrderItem) private gearOrderItems:Repository<TeamGearOrderItem>, @InjectRepository(TeamGearOrderPick) private gearOrderPicks:Repository<TeamGearOrderPick>,
     @InjectRepository(User) private users:Repository<User>) {}
 
+  // Free tier: 1 gearbag, 15 tracked items, no photos — Pro removes all three caps.
+  static readonly FREE_GEARBAG_LIMIT=1; static readonly FREE_GEAR_ITEM_LIMIT=15;
   async myGearbags(userId:string){const bags=await this.gearbags.find({where:{ownerId:userId},order:{isPrimary:'DESC',createdAt:'ASC'}});const items=await this.gearItems.find({where:{ownerId:userId,isArchived:false},order:{createdAt:'ASC'}});return bags.map(b=>({...b,items:items.filter(i=>i.gearbagId===b.id)}))}
   async primaryGearbagFor(userId:string){const bags=await this.myGearbags(userId);return bags.find(b=>b.isPrimary)||bags[0]||null}
-  createGearbag(userId:string,data:Partial<Gearbag>){return this.gearbags.save(this.gearbags.create({...data,ownerId:userId}))}
+  async createGearbag(userId:string,data:Partial<Gearbag>){
+    const {isPro}=await this.billing.getStatus(userId);
+    if(!isPro){const count=await this.gearbags.count({where:{ownerId:userId}});if(count>=CommunityService.FREE_GEARBAG_LIMIT)throw new ForbiddenException(`Free accounts get ${CommunityService.FREE_GEARBAG_LIMIT} gearbag. Upgrade to Pro for unlimited gearbags.`)}
+    return this.gearbags.save(this.gearbags.create({...data,ownerId:userId}))
+  }
   async updateGearbag(userId:string,id:string,data:Partial<Gearbag>){const row=await this.owned(this.gearbags,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearbags.save(row)}
   async removeGearbag(userId:string,id:string){await this.owned(this.gearbags,id,userId);await this.gearbags.delete(id)}
-  async addGearItem(userId:string,gearbagId:string,data:Partial<GearItem>){await this.owned(this.gearbags,gearbagId,userId);return this.gearItems.save(this.gearItems.create({...data,gearbagId,ownerId:userId}))}
-  async updateGearItem(userId:string,id:string,data:Partial<GearItem>){const row=await this.owned(this.gearItems,id,userId);Object.assign(row,data,{id,ownerId:userId});return this.gearItems.save(row)}
+  async addGearItem(userId:string,gearbagId:string,data:Partial<GearItem>){
+    await this.owned(this.gearbags,gearbagId,userId);
+    const {isPro}=await this.billing.getStatus(userId);
+    if(!isPro){
+      if(data.images?.length)throw new ForbiddenException('Photos on gear items are a Pro feature. Upgrade to Pro to add photos.');
+      const count=await this.gearItems.count({where:{ownerId:userId,isArchived:false}});
+      if(count>=CommunityService.FREE_GEAR_ITEM_LIMIT)throw new ForbiddenException(`Free accounts can track up to ${CommunityService.FREE_GEAR_ITEM_LIMIT} items. Upgrade to Pro for unlimited items.`);
+    }
+    return this.gearItems.save(this.gearItems.create({...data,gearbagId,ownerId:userId}))
+  }
+  async updateGearItem(userId:string,id:string,data:Partial<GearItem>){
+    const row=await this.owned(this.gearItems,id,userId);
+    if(data.images?.length){const {isPro}=await this.billing.getStatus(userId);if(!isPro)throw new ForbiddenException('Photos on gear items are a Pro feature. Upgrade to Pro to add photos.')}
+    Object.assign(row,data,{id,ownerId:userId});return this.gearItems.save(row)
+  }
   async archiveGearItem(userId:string,id:string){return this.updateGearItem(userId,id,{isArchived:true})}
 
   listTeams(search?:string){const q=this.teams.createQueryBuilder('team').where('team.moderation_status = :s',{s:ApplicationStatus.APPROVED});if(search)q.andWhere('(team.name ILIKE :q OR team.city ILIKE :q)',{q:`%${search}%`});return q.orderBy('team.createdAt','DESC').getMany()}

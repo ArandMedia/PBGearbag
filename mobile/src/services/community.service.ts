@@ -1,7 +1,8 @@
 import { apiClient } from './api';
 import type { Listing } from './marketplace.service';
+import { toUploadPart } from '../utils/upload';
 
-export type GearItem={id:string;name:string;category:string;manufacturer?:string;model?:string;color?:string;condition?:string;notes?:string;serviceDueAt?:string};
+export type GearItem={id:string;name:string;category:string;manufacturer?:string;model?:string;color?:string;condition?:string;notes?:string;serviceDueAt?:string;images?:string[]};
 export type Gearbag={id:string;name:string;description?:string;visibility:string;isPrimary:boolean;items:GearItem[]};
 export type Team={id:string;slug:string;name:string;teamType:string;description?:string;city?:string;region?:string;country?:string;isRecruiting:boolean;bannerUrl?:string;createdAt?:string;moderationStatus?:string};
 export type Organization={id:string;slug:string;name:string;type:string;description?:string;city?:string;region?:string;country?:string;address?:string;latitude?:number;longitude?:number;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;isVerified:boolean;images?:string[];details?:Record<string,unknown>;claimedById?:string;followerCount?:number;moderationStatus?:string};
@@ -26,6 +27,7 @@ export const communityService={
   async createGearbag(data:{name:string;description?:string;visibility?:string}){return (await apiClient.post<Gearbag>('/gearbags',data)).data},
   async updateGearbag(id:string,data:Partial<{name:string;description?:string;visibility:string}>){return (await apiClient.patch<Gearbag>(`/gearbags/${id}`,data)).data},
   async removeGearbag(id:string){return (await apiClient.delete(`/gearbags/${id}`)).data},
+  async uploadGearPhoto(uri:string,mimeType?:string){const name=uri.split('/').pop()||'gear-photo';const form=new FormData();form.append('file',await toUploadPart(uri,name,mimeType||'image/jpeg'));return (await apiClient.post<{imageUrl:string}>('/gearbags/upload',form)).data},
   async addGearItem(gearbagId:string,data:Partial<GearItem>){return (await apiClient.post(`/gearbags/${gearbagId}/items`,data)).data},
   async updateGearItem(id:string,data:Partial<GearItem>){return (await apiClient.patch(`/gearbags/items/${id}`,data)).data},
   async archiveGearItem(id:string){return (await apiClient.post(`/gearbags/items/${id}/archive`)).data},
