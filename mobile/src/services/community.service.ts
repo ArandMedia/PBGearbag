@@ -50,6 +50,8 @@ export const communityService={
   async organization(slug:string){return (await apiClient.get<Organization>(`/organizations/${slug}`)).data},
   async updateOrganization(id:string,data:{name?:string;description?:string;address?:string;city?:string;region?:string;country?:string;websiteUrl?:string;contactEmail?:string;phoneNumber?:string;logoUrl?:string;images?:string[];amenities?:string[];hours?:string}){return (await apiClient.patch<Organization>(`/organizations/${id}`,data)).data},
   async organizationEvents(id:string){return (await apiClient.get<Event[]>(`/organizations/${id}/events`)).data},
+  async organizationReviews(id:string){return (await apiClient.get<{items:{id:string;authorId:string;authorName:string;rating:number;body?:string;createdAt:string}[];averageRating:number|null;count:number}>(`/organizations/${id}/reviews`)).data},
+  async submitReview(id:string,data:{rating:number;body?:string}){return (await apiClient.post(`/organizations/${id}/reviews`,data)).data},
   async requestOrganizationClaim(id:string,note?:string){return (await apiClient.post<OrganizationClaim>(`/organizations/${id}/claim`,{note})).data},
   async organizationClaims(){return (await apiClient.get<OrganizationClaim[]>('/organizations/claims')).data},
   async decideOrganizationClaim(id:string,status:'approved'|'declined'){return (await apiClient.patch<OrganizationClaim>(`/organizations/claims/${id}`,{status})).data},

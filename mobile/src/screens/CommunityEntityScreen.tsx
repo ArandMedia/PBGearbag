@@ -122,6 +122,13 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
   const [hostMaxTeams, setHostMaxTeams] = useState("");
   const [hosting, setHosting] = useState(false);
   const [hostSent, setHostSent] = useState(false);
+  const [reviews, setReviews] = useState<{ id: string; authorId: string; authorName: string; rating: number; body?: string; createdAt: string }[]>([]);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [myRating, setMyRating] = useState(0);
+  const [reviewBody, setReviewBody] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const load =
@@ -142,6 +149,14 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
         .then((orgs) => setIsFollowing(orgs.some((o) => o.id === data.id)))
         .catch(() => {});
       communityService.organizationEvents(data.id).then(setFieldEvents).catch(() => {});
+      communityService
+        .organizationReviews(data.id)
+        .then(({ items, averageRating: avg, count }) => {
+          setReviews(items);
+          setAverageRating(avg);
+          setReviewCount(count);
+        })
+        .catch(() => {});
     }
     if (kind === "team") {
       communityService.teamRoster(data.id).then(setTeamRoster).catch(() => {});
@@ -254,6 +269,31 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
       );
     } finally {
       setClaiming(false);
+    }
+  };
+  const myExistingReview = reviews.find((r) => r.authorId === user?.id);
+  const openReviewForm = () => {
+    setMyRating(myExistingReview?.rating || 0);
+    setReviewBody(myExistingReview?.body || "");
+    setShowReviewForm(true);
+  };
+  const submitReview = async () => {
+    if (!myRating) return;
+    setSubmittingReview(true);
+    try {
+      await communityService.submitReview(data.id, { rating: myRating, body: reviewBody.trim() || undefined });
+      const refreshed = await communityService.organizationReviews(data.id);
+      setReviews(refreshed.items);
+      setAverageRating(refreshed.averageRating);
+      setReviewCount(refreshed.count);
+      setShowReviewForm(false);
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't submit your review",
+        e?.response?.data?.error?.message || e?.response?.data?.message || "Please try again in a moment.",
+      );
+    } finally {
+      setSubmittingReview(false);
     }
   };
   const canManageTeam = kind === "team" && ["owner", "manager", "captain"].includes(teamRole || "");
@@ -659,6 +699,64 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
               </Text>
             </View>
           ))}
+        </View>
+      )}
+
+      {kind === "field" && (
+        <View style={s.card}>
+          <View style={s.announceHeader}>
+            <Text style={s.label}>
+              REVIEWS{averageRating != null ? ` · ${averageRating}★ (${reviewCount})` : ""}
+            </Text>
+            {user && (
+              <Pressable onPress={() => (showReviewForm ? setShowReviewForm(false) : openReviewForm())}>
+                <Text style={[s.announceToggle, { color: accent }]}>
+                  {showReviewForm ? "Cancel" : myExistingReview ? "Edit your review" : "+ Write a review"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+          {showReviewForm && (
+            <View style={s.announceForm}>
+              <View style={s.starRow}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Pressable key={n} onPress={() => setMyRating(n)}>
+                    <Text style={{ fontSize: 28, color: n <= myRating ? accent : "#3B4645" }}>★</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="What was your experience? (optional)"
+                placeholderTextColor="#5A655F"
+                value={reviewBody}
+                onChangeText={setReviewBody}
+                multiline
+                numberOfLines={3}
+              />
+              <Pressable
+                style={[s.postBtn, { backgroundColor: accent }, (!myRating || submittingReview) && s.postBtnDisabled]}
+                onPress={submitReview}
+                disabled={!myRating || submittingReview}
+              >
+                {submittingReview ? <ActivityIndicator size="small" color="#10140D" /> : <Text style={s.postBtnText}>Submit review</Text>}
+              </Pressable>
+            </View>
+          )}
+          {!reviews.length ? (
+            <Text style={s.emptyAnnounce}>No reviews yet.</Text>
+          ) : (
+            reviews.map((r) => (
+              <View key={r.id} style={s.announceRow}>
+                <View style={s.announceHeader}>
+                  <Text style={s.announceTitle}>{r.authorName}</Text>
+                  <Text style={{ color: accent, fontWeight: "900" }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</Text>
+                </View>
+                {!!r.body && <Text style={s.announceBody}>{r.body}</Text>}
+                <Text style={s.announceTime}>{new Date(r.createdAt).toLocaleDateString()}</Text>
+              </View>
+            ))
+          )}
         </View>
       )}
 
@@ -1232,6 +1330,7 @@ const s = StyleSheet.create({
   followerCount: { color: "#75817B", fontSize: 12, marginTop: 6 },
   manageLink: { marginTop: 8 },
   manageLinkText: { fontSize: 12, fontWeight: "900" },
+  starRow: { flexDirection: "row", gap: 6, marginBottom: 4 },
   announceHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   announceToggle: { color: DEFAULT_ACCENT, fontSize: 12, fontWeight: "900" },
   announceForm: { marginTop: 10, marginBottom: 16, gap: 10 },

@@ -98,6 +98,7 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Post(':id/claim') claim(@CurrentUser()u:User,@Param('id')id:string,@Body()d:ClaimDto){return this.s.requestOrganizationClaim(u.id,id,d.note)}
   @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:OrganizationUpdateDto){return this.s.updateOrganization(u.id,id,d)}
   @Post(':id/reviews') review(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Omit<ReviewDto,'subjectId'|'subjectType'>){return this.s.createReview(u.id,{...d,subjectId:id,subjectType:'organization'})}
+  @Get(':id/reviews') @Public() reviews(@Param('id')id:string){return this.s.organizationReviews(id)}
   @Post(':id/follow') follow(@CurrentUser()u:User,@Param('id')id:string){return this.s.followOrganization(u.id,id)}
   @Get(':id/events') @Public() events(@Param('id')id:string){return this.s.organizationEvents(id)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('organization',id)}

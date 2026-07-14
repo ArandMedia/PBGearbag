@@ -678,7 +678,26 @@ export class CommunityService {
   createReport(userId:string,data:Partial<Report>){return this.reports.save(this.reports.create({...data,reporterId:userId,status:ReportStatus.OPEN}))}
   listReports(){return this.reports.find({order:{createdAt:'DESC'}})}
   async resolveReport(id:string,data:Partial<Report>){const report=await this.reports.findOneBy({id});if(!report)throw new NotFoundException('Report not found');Object.assign(report,data,{id});return this.reports.save(report)}
-  createReview(userId:string,data:Partial<Review>){if(!data.rating||data.rating<1||data.rating>5)throw new BadRequestException('Rating must be 1-5');return this.reviews.save(this.reviews.create({...data,authorId:userId}))}
+  // One review per (author, subject) — resubmitting edits the existing row
+  // rather than piling up duplicates, matching how a real reviewer expects
+  // "leave a review" to work once they've already left one.
+  async createReview(userId:string,data:Partial<Review>){
+    if(!data.rating||data.rating<1||data.rating>5)throw new BadRequestException('Rating must be 1-5');
+    const existing=await this.reviews.findOne({where:{authorId:userId,subjectId:data.subjectId,subjectType:data.subjectType}});
+    if(existing){Object.assign(existing,data,{authorId:userId});return this.reviews.save(existing)}
+    return this.reviews.save(this.reviews.create({...data,authorId:userId}));
+  }
+  // Reviews had a write side but nothing ever read them back — not even
+  // for admins. Public since a field's reviews are meant to be seen by
+  // anyone deciding whether to play there.
+  async organizationReviews(organizationId:string){
+    const reviews=await this.reviews.find({where:{subjectId:organizationId,subjectType:'organization',isVisible:true},order:{createdAt:'DESC'},take:50});
+    if(!reviews.length)return {items:[],averageRating:null,count:0};
+    const authors=await this.users.find({where:{id:In(reviews.map(r=>r.authorId))}});
+    const items=reviews.map(r=>({...r,authorName:authors.find(a=>a.id===r.authorId)?.displayName||authors.find(a=>a.id===r.authorId)?.username||'Someone'}));
+    const averageRating=Math.round((reviews.reduce((sum,r)=>sum+r.rating,0)/reviews.length)*10)/10;
+    return {items,averageRating,count:reviews.length};
+  }
 
   private async owned<T extends {id:string;ownerId:string}>(repo:Repository<T>,id:string,userId:string){const row=await repo.findOne({where:{id} as any});if(!row)throw new NotFoundException('Record not found');if(row.ownerId!==userId)throw new ForbiddenException('You do not own this record');return row}
   private async requireTeamManager(userId:string,teamId:string){const member=await this.teamMembers.findOne({where:{teamId,userId,isActive:true}});if(!member||![TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN].includes(member.role))throw new ForbiddenException('Team manager access required');return member}
