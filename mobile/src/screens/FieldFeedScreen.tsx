@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   RefreshControl,
@@ -59,10 +60,12 @@ function PostCard({
   post,
   reload,
   onProfile,
+  currentUserId,
 }: {
   post: FeedPost;
   reload: () => void;
   onProfile: (id: string) => void;
+  currentUserId?: string;
 }) {
   const { accent: TURF } = useTheme();
   const [open, setOpen] = useState(false),
@@ -73,6 +76,34 @@ function PostCard({
   const toggle = async () => {
     if (!open) setComments(await socialService.comments(post.id));
     setOpen(!open);
+  };
+  const refreshComments = async () => setComments(await socialService.comments(post.id));
+  const removePost = () => {
+    Alert.alert("Delete this post?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await socialService.deletePost(post.id);
+          reload();
+        },
+      },
+    ]);
+  };
+  const removeComment = (id: string) => {
+    Alert.alert("Delete this comment?", undefined, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await socialService.deleteComment(id);
+          await refreshComments();
+          reload();
+        },
+      },
+    ]);
   };
   return (
     <View style={s.post}>
@@ -108,6 +139,11 @@ function PostCard({
         <Text style={[s.typeBadge, { color: TURF }]}>
           {post.type.replace("_", " ").toUpperCase()}
         </Text>
+        {currentUserId === post.author.id && (
+          <Pressable style={s.deleteButton} onPress={removePost}>
+            <Ionicons name="trash-outline" color="#7C8783" size={16} />
+          </Pressable>
+        )}
       </Pressable>
       <Text style={s.postBody}>{post.body}</Text>
       {post.mediaUrl &&
@@ -165,9 +201,16 @@ function PostCard({
                 size={28}
               />
               <View style={s.commentBubble}>
-                <Text style={s.commentAuthor}>
-                  {x.author.displayName || x.author.username}
-                </Text>
+                <View style={s.commentBubbleHead}>
+                  <Text style={s.commentAuthor}>
+                    {x.author.displayName || x.author.username}
+                  </Text>
+                  {currentUserId === x.author.id && (
+                    <Pressable onPress={() => removeComment(x.id)}>
+                      <Ionicons name="trash-outline" color="#66716D" size={13} />
+                    </Pressable>
+                  )}
+                </View>
                 <Text style={s.commentBody}>{x.body}</Text>
               </View>
             </View>
@@ -406,6 +449,7 @@ export default function FieldFeedScreen({ navigation }: any) {
             key={post.id}
             post={post}
             reload={load}
+            currentUserId={user?.id}
             onProfile={(id) =>
               navigation.getParent()?.navigate("PublicProfile", { userId: id })
             }
@@ -644,6 +688,12 @@ const s = StyleSheet.create({
     backgroundColor: "#0D1213",
     borderRadius: 10,
     padding: 9,
+  },
+  deleteButton: { padding: 4, marginLeft: 4 },
+  commentBubbleHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   commentAuthor: { color: "#C9D0CC", fontSize: 10, fontWeight: "900" },
   commentBody: { color: "#9DA7A2", fontSize: 11, marginTop: 3 },

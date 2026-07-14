@@ -193,6 +193,26 @@ export class SocialService {
     }
     return saved;
   }
+  // postId/userId on SocialComment/SocialReaction are bare columns, not FK
+  // relations (matches how this codebase already handles CommunityEvent/
+  // Review elsewhere) — deleting a post needs to explicitly clear its
+  // comments and reactions first rather than relying on a cascade.
+  async deletePost(userId: string, postId: string) {
+    const post = await this.posts.findOneBy({ id: postId });
+    if (!post) throw new NotFoundException("Post not found");
+    if (post.authorId !== userId) throw new ForbiddenException("You can only delete your own posts");
+    await this.reactions.delete({ postId });
+    await this.comments.delete({ postId });
+    await this.posts.delete(postId);
+    return { message: "Post deleted" };
+  }
+  async deleteComment(userId: string, commentId: string) {
+    const comment = await this.comments.findOneBy({ id: commentId });
+    if (!comment) throw new NotFoundException("Comment not found");
+    if (comment.authorId !== userId) throw new ForbiddenException("You can only delete your own comments");
+    await this.comments.delete(commentId);
+    return { message: "Comment deleted" };
+  }
   async follow(followerId: string, followingId: string) {
     if (followerId === followingId) return { active: false };
     const existing = await this.follows.findOne({

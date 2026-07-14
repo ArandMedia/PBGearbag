@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -92,6 +93,15 @@ export class SocialController {
     @Body() d: CommentDto,
   ) {
     return this.social.comment(u.id, id, d.body);
+  }
+  @Delete(":id") deletePost(@CurrentUser() u: User, @Param("id") id: string) {
+    return this.social.deletePost(u.id, id);
+  }
+  @Delete("comments/:id") deleteComment(
+    @CurrentUser() u: User,
+    @Param("id") id: string,
+  ) {
+    return this.social.deleteComment(u.id, id);
   }
   @Post("users/:id/follow") follow(
     @CurrentUser() u: User,

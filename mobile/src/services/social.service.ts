@@ -23,7 +23,7 @@ export type FeedComment = {
   id: string;
   body: string;
   createdAt: string;
-  author: { username: string; displayName?: string; avatarUrl?: string };
+  author: { id: string; username: string; displayName?: string; avatarUrl?: string };
 };
 export type RelationshipCounts = { followerCount: number; followingCount: number };
 export type SocialProfileSummary = {
@@ -71,6 +71,12 @@ export const socialService = {
   },
   async comment(id: string, body: string) {
     return (await apiClient.post(`/feed/${id}/comments`, { body })).data;
+  },
+  async deletePost(id: string) {
+    return (await apiClient.delete(`/feed/${id}`)).data;
+  },
+  async deleteComment(id: string) {
+    return (await apiClient.delete(`/feed/comments/${id}`)).data;
   },
   async follow(userId: string) {
     return (await apiClient.post<{ active: boolean }>(`/feed/users/${userId}/follow`)).data;
