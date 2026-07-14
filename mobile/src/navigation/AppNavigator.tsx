@@ -51,6 +51,7 @@ import PublicProfileScreen from "../screens/PublicProfileScreen";
 import FollowListScreen from "../screens/FollowListScreen";
 import CommunityEntityScreen from "../screens/CommunityEntityScreen";
 import TeamGearOrderScreen from "../screens/TeamGearOrderScreen";
+import NotFoundScreen from "../screens/NotFoundScreen";
 import CustomizeWidgetsScreen from "../screens/CustomizeWidgetsScreen";
 
 const Stack = createNativeStackNavigator();
@@ -331,6 +332,11 @@ function MainStack() {
         name="TeamGearOrder"
         component={TeamGearOrderScreen}
         options={detailOptions("Gear Order")}
+      />
+      <Stack.Screen
+        name="NotFound"
+        component={NotFoundScreen}
+        options={detailOptions("Not Found")}
       />
     </Stack.Navigator>
   );

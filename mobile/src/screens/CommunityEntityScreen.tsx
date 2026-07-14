@@ -126,7 +126,7 @@ export default function CommunityEntityScreen({ route, navigation }: any) {
         : kind === "event"
           ? communityService.event(slug)
           : communityService.team(slug);
-    load.then(setData);
+    load.then(setData).catch(() => navigation?.replace?.("NotFound"));
   }, [kind, slug]);
 
   useEffect(() => {

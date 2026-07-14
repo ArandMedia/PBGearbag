@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="98" cy="10" r="3.5" fill="#A8C84A" />
+  <circle cx="98" cy="45" r="3" fill="#A8C84A" />
+  <circle cx="8" cy="82" r="5" fill="#A8C84A" />
+  <circle cx="50" cy="99" r="3" fill="#A8C84A" />
+  <path
+    d="M29,49
+       Q1,59 31,60
+       Q27,73 41,69
+       Q46,99 55,70
+       Q70,78 66,64
+       Q77,63 71,52
+       Q95,38 67,38
+       Q71,21 55,30
+       Q46,4 41,31
+       Q26,26 32,40
+       Q21,42 29,49
+       Z"
+    fill="#A8C84A"
+  />
+  <text x="50" y="59" font-size="30" font-weight="900" fill="#10150d" text-anchor="middle" font-family="Arial, sans-serif">PB</text>
+</svg>
