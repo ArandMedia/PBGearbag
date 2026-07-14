@@ -16,7 +16,15 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_URL,
-      timeout: 10000,
+      // The backend runs on Render's free tier, which spins the service
+      // down after ~15 minutes idle — the next request triggers a cold
+      // boot that (per the timing already documented in AuthContext's
+      // checkAuth) can take 20+ seconds. A 10s timeout meant the very
+      // first request after any idle period failed client-side before the
+      // server ever got a chance to respond, surfacing as "Invalid
+      // credentials" or a bare "Something went wrong" even though nothing
+      // was actually wrong with the credentials or the request.
+      timeout: 30000,
       // No default Content-Type here — axios already sets
       // application/json automatically for plain-object bodies. Forcing it
       // as an instance default broke file uploads: when a 401 triggers the
@@ -92,6 +100,25 @@ class ApiClient {
               throw refreshError;
             }
           }
+        }
+
+        // A timeout or dropped connection leaves error.response undefined —
+        // every call site in the app reads its error message from
+        // err.response?.data?.message, so without this they either fell
+        // through to a hardcoded default ("Invalid credentials" on login,
+        // "Something went wrong" on password reset) that has nothing to do
+        // with what actually happened, or showed nothing at all. Attaching
+        // a synthetic response here means the existing call sites pick up
+        // an accurate message for free.
+        if (!error.response) {
+          (error as any).response = {
+            data: {
+              message:
+                error.code === 'ECONNABORTED'
+                  ? "This is taking longer than usual — our server may be waking up. Please try again in a moment."
+                  : "Couldn't reach PBGearbag. Check your connection and try again.",
+            },
+          };
         }
 
         return Promise.reject(error);

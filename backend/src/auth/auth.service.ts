@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +20,7 @@ interface RefreshPayload { sub: string; sid: string; family: string; type: 'refr
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -181,30 +182,47 @@ export class AuthService {
   // tier blocks outbound SMTP ports at the network level, so nodemailer
   // just times out there regardless of how correct the credentials are.
   // SMTP stays as a fallback for hosts that don't block it.
+  //
+  // Every caller (register/forgotPassword/resendVerification/email-change)
+  // needs to keep returning its normal, security-conscious response even
+  // if the send itself fails — an email-provider outage or misconfig
+  // (missing RESEND_API_KEY, SMTP blocked) shouldn't turn into a 500 that
+  // leaks account existence or looks like a broken feature. The auth-token
+  // row is already persisted by the time this runs, so a delivery failure
+  // just means the user doesn't get the email — logged loudly here so a
+  // real misconfiguration is visible in the server logs instead of silently
+  // swallowed.
   private async deliverToken(email:string,token:string,type:AuthTokenType){
-    const base=this.configService.get('FRONTEND_URL')||'http://localhost:8081';
-    const path=type===AuthTokenType.VERIFY?'verify-email':type===AuthTokenType.EMAIL_CHANGE?'confirm-email-change':'reset-password';
-    const subject=type===AuthTokenType.VERIFY?'Verify your PBGearbag account':type===AuthTokenType.EMAIL_CHANGE?'Confirm your new PBGearbag email':'Reset your PBGearbag password';
-    const text=`Open ${base}/${path}?token=${token}`;
-    const from=this.configService.get('EMAIL_FROM')||'PBGearbag <noreply@arandmedia.com>';
+    try{
+      const base=this.configService.get('FRONTEND_URL')||'http://localhost:8081';
+      const path=type===AuthTokenType.VERIFY?'verify-email':type===AuthTokenType.EMAIL_CHANGE?'confirm-email-change':'reset-password';
+      const subject=type===AuthTokenType.VERIFY?'Verify your PBGearbag account':type===AuthTokenType.EMAIL_CHANGE?'Confirm your new PBGearbag email':'Reset your PBGearbag password';
+      const text=`Open ${base}/${path}?token=${token}`;
+      const from=this.configService.get('EMAIL_FROM')||'PBGearbag <noreply@arandmedia.com>';
 
-    const resendKey=this.configService.get<string>('RESEND_API_KEY');
-    if(resendKey){
-      const res=await fetch('https://api.resend.com/emails',{
-        method:'POST',
-        headers:{Authorization:`Bearer ${resendKey}`,'Content-Type':'application/json'},
-        body:JSON.stringify({from,to:email,subject,text}),
-      });
-      if(!res.ok){
-        const body=await res.text().catch(()=>'');
-        throw new Error(`Resend send failed: ${res.status} ${body}`);
+      const resendKey=this.configService.get<string>('RESEND_API_KEY');
+      if(resendKey){
+        const res=await fetch('https://api.resend.com/emails',{
+          method:'POST',
+          headers:{Authorization:`Bearer ${resendKey}`,'Content-Type':'application/json'},
+          body:JSON.stringify({from,to:email,subject,text}),
+        });
+        if(!res.ok){
+          const body=await res.text().catch(()=>'');
+          throw new Error(`Resend send failed: ${res.status} ${body}`);
+        }
+        return;
       }
-      return;
-    }
 
-    const host=this.configService.get<string>('SMTP_HOST');
-    if(!host)return;
-    const transport=nodemailer.createTransport({host,port:Number(this.configService.get('SMTP_PORT')||587),secure:false,auth:{user:this.configService.get('SMTP_USER'),pass:this.configService.get('SMTP_PASSWORD')}});
-    await transport.sendMail({from,to:email,subject,text});
+      const host=this.configService.get<string>('SMTP_HOST');
+      if(!host){
+        this.logger.warn(`No email provider configured (RESEND_API_KEY/SMTP_HOST both unset) — ${type} email to ${email} was not sent`);
+        return;
+      }
+      const transport=nodemailer.createTransport({host,port:Number(this.configService.get('SMTP_PORT')||587),secure:false,auth:{user:this.configService.get('SMTP_USER'),pass:this.configService.get('SMTP_PASSWORD')},connectionTimeout:8000,greetingTimeout:8000,socketTimeout:8000});
+      await transport.sendMail({from,to:email,subject,text});
+    }catch(error:any){
+      this.logger.error(`Failed to deliver ${type} email to ${email}: ${error?.message||error}`);
+    }
   }
 }
