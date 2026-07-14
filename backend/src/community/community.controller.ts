@@ -99,6 +99,7 @@ export class OrganizationsController { constructor(private s:CommunityService){}
   @Patch(':id') update(@CurrentUser()u:User,@Param('id')id:string,@Body()d:OrganizationUpdateDto){return this.s.updateOrganization(u.id,id,d)}
   @Post(':id/reviews') review(@CurrentUser()u:User,@Param('id')id:string,@Body()d:Omit<ReviewDto,'subjectId'|'subjectType'>){return this.s.createReview(u.id,{...d,subjectId:id,subjectType:'organization'})}
   @Get(':id/reviews') @Public() reviews(@Param('id')id:string){return this.s.organizationReviews(id)}
+  @Delete('reviews/:id') deleteReview(@CurrentUser()u:User,@Param('id')id:string){return this.s.deleteReview(u.id,u.roles?.includes(UserRole.ADMIN),id)}
   @Post(':id/follow') follow(@CurrentUser()u:User,@Param('id')id:string){return this.s.followOrganization(u.id,id)}
   @Get(':id/events') @Public() events(@Param('id')id:string){return this.s.organizationEvents(id)}
   @Get(':id/announcements') @Public() announcements(@Param('id')id:string){return this.s.listAnnouncements('organization',id)}

@@ -698,6 +698,17 @@ export class CommunityService {
     const averageRating=Math.round((reviews.reduce((sum,r)=>sum+r.rating,0)/reviews.length)*10)/10;
     return {items,averageRating,count:reviews.length};
   }
+  // Author-or-admin — a review isn't cascade-deleted when its author's
+  // account is (Review.authorId is a bare column, not a relation, same as
+  // CommunityEvent.organizerId elsewhere in this file), so this is also
+  // the only way to clean up a review left behind by a deleted account.
+  async deleteReview(userId:string,isAdmin:boolean,id:string){
+    const review=await this.reviews.findOneBy({id});
+    if(!review)throw new NotFoundException('Review not found');
+    if(review.authorId!==userId&&!isAdmin)throw new ForbiddenException('Only the review author can delete it');
+    await this.reviews.delete(id);
+    return {message:'Review deleted'};
+  }
 
   private async owned<T extends {id:string;ownerId:string}>(repo:Repository<T>,id:string,userId:string){const row=await repo.findOne({where:{id} as any});if(!row)throw new NotFoundException('Record not found');if(row.ownerId!==userId)throw new ForbiddenException('You do not own this record');return row}
   private async requireTeamManager(userId:string,teamId:string){const member=await this.teamMembers.findOne({where:{teamId,userId,isActive:true}});if(!member||![TeamMemberRole.OWNER,TeamMemberRole.MANAGER,TeamMemberRole.CAPTAIN].includes(member.role))throw new ForbiddenException('Team manager access required');return member}
